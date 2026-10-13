@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="001-create-users" author="job-prep">
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="002-create-accounts" author="job-prep">
+        <createTable tableName="accounts">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="user_id" type="BIGINT"><constraints nullable="false" referencedTableName="users" referencedColumnNames="id" foreignKeyName="fk_accounts_user"/></column>
+            <column name="status" type="VARCHAR(32)" defaultValue="ACTIVE"><constraints nullable="false"/></column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="status_changed_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="accounts" indexName="idx_accounts_user_id"><column name="user_id"/></createIndex>
+    </changeSet>
+
+    <changeSet id="003-create-account-status-history" author="job-prep">
+        <createTable tableName="account_status_history">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="account_id" type="BIGINT"><constraints nullable="false" referencedTableName="accounts" referencedColumnNames="id" foreignKeyName="fk_history_account"/></column>
+            <column name="old_status" type="VARCHAR(32)"/>
+            <column name="new_status" type="VARCHAR(32)"><constraints nullable="false"/></column>
+            <column name="changed_by" type="BIGINT"/>
+            <column name="changed_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="account_status_history" indexName="idx_history_account_id"><column name="account_id"/></createIndex>
+    </changeSet>
+</databaseChangeLog>
