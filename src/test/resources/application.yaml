@@ -2,7 +2,6 @@ spring:
   application:
     name: job-prep
   datasource:
-    # URL/credentials are injected dynamically by Testcontainers (@ServiceConnection / @DynamicPropertySource)
     driver-class-name: org.postgresql.Driver
   liquibase:
     enabled: true
