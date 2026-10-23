@@ -18,6 +18,10 @@ public class AccountStatusHistory {
     private Long id;
 
     @Setter
+    @Column(name = "account_id", nullable = false)
+    private Long accountId;
+
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "old_status")
     private AccountStatus oldStatus;
