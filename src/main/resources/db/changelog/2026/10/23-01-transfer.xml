@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="21-01-transfer-1" author="mac">
+        <addColumn tableName="accounts">
+            <column name="currency" type="VARCHAR(3)" defaultValue="RUB">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <modifyDataType tableName="accounts" columnName="amount" newDataType="NUMERIC(19,2)"/>
+        <addNotNullConstraint tableName="accounts" columnName="amount"
+                              columnDataType="NUMERIC(19,2)" defaultNullValue="0"/>
+        <addDefaultValue tableName="accounts" columnName="amount" defaultValueNumeric="0"/>
+    </changeSet>
+
+    <changeSet id="21-01-transfer-2" author="mac">
+        <createTable tableName="transfers_history">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="recipient_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="NUMERIC(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_transfers_history_idempotency_key"/>
+            </column>
+            <column name="currency" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

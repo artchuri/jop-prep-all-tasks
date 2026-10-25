@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1792830794303-5" author="mac">
+        <createIndex indexName="idx_transfers_history_id_and_idempotency_key" tableName="transfers_history">
+            <column name="id"/>
+            <column name="idempotency_key"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1792830794303-1" author="mac">
+        <modifyDataType columnName="amount" newDataType="NUMERIC(19,2)" tableName="transfers_history"/>
+    </changeSet>
+    <changeSet id="1792830794303-2" author="mac">
+        <modifyDataType columnName="currency" newDataType="VARCHAR(3)" tableName="transfers_history"/>
+    </changeSet>
+    <changeSet id="1792830794303-3" author="mac">
+        <modifyDataType columnName="idempotency_key" newDataType="VARCHAR(64)" tableName="transfers_history"/>
+    </changeSet>
+    <changeSet id="1792830794303-4" author="mac">
+        <modifyDataType columnName="status" newDataType="VARCHAR(64)" tableName="transfers_history"/>
+    </changeSet>
+
+</databaseChangeLog>

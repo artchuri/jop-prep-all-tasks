@@ -3,8 +3,8 @@ package nip.edu.jobprep.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "accounts")
@@ -42,5 +42,13 @@ public class Account {
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
+
+    @Setter
+    @Column(name = "amount", nullable = false)
+    private BigDecimal amount;
+
+    @Setter
+    @Column(name = "currency", nullable = false)
+    private String currency;
 
 }

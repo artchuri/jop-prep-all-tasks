@@ -3,7 +3,7 @@ package nip.edu.jobprep.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "account_status_history")
@@ -37,7 +37,7 @@ public class AccountStatusHistory {
 
     @Setter
     @Column(name = "changed_at", nullable = false)
-    private OffsetDateTime changedAt;
+    private Instant changedAt;
 
     @Setter
     @Version

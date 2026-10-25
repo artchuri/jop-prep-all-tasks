@@ -3,6 +3,7 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
     <include file="db/changelog/changes/001-initial-schema.xml"/>
-    <include file="db/changelog/changes/20-01-changelog.xml"/>
-    <include file="db/changelog/2026/10/20-01-changelog.xml"/>
+    <include file="/db/changelog/2026/10/20-01-changelog.xml"/>
+    <include file="db/changelog/2026/10/23-01-transfer.xml"/>
+    <include file="db/changelog/2026/10/24-01-changelog.xml"/>
 </databaseChangeLog>
