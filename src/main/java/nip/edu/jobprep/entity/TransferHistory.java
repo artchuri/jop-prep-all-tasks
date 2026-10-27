@@ -11,13 +11,23 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "transfers_history", indexes = {
-        @Index(name = "idx_transfers_history_id_and_idempotency_key", columnList = "id, idempotency_key")
-})
+@Table(name = "transfers_history",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_transfers_history_idempotency_key",
+                        columnNames = "idempotency_key"),
+                @UniqueConstraint(name = "uk_transfers_history_idempotency_key_amount",
+                        columnNames = {"idempotency_key", "amount"})
+        },
+        indexes = {
+                @Index(name = "idx_transfers_history_id_and_idempotency_key",
+                        columnList = "id, idempotency_key"),
+                @Index(name = "idx_transfers_history_amount_and_idempotency_key",
+                        columnList = "amount, idempotency_key")
+        })
 public class TransferHistory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-
     private Long id;
 
     @Setter
@@ -29,7 +39,7 @@ public class TransferHistory {
     private Long fromAccountId;
 
     @Setter
-    @Column(name = "amount", nullable = false)
+    @Column(name = "amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
     @Setter
@@ -41,7 +51,7 @@ public class TransferHistory {
     private String status;
 
     @Setter
-    @Column(name = "idempotency_key", nullable = false, unique = true)
+    @Column(name = "idempotency_key", nullable = false)
     private String idempotencyKey;
 
     @Setter

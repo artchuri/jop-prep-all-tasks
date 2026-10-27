@@ -43,7 +43,7 @@ public class TransferRepository {
                 .set(field("status"), status)
                 .set(field("idempotency_key"), idempotencyKey)
                 .set(field("currency"), currency)
-                .onConflict(field("idempotency_key")).doNothing()
+                .onConflict(field("idempotency_key"), field("amount")).doNothing()
                 .returning(TRANSFER_FIELDS).fetchOne();
         return record == null ? null : map(record);
     }
