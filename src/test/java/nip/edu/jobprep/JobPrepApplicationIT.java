@@ -1,6 +1,6 @@
 package nip.edu.jobprep;
 
-import nip.edu.jobprep.test.AbstractIntegrationTest;
+import nip.edu.jobprep.test.integration.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

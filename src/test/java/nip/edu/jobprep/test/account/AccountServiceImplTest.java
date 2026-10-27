@@ -1,10 +1,9 @@
-package nip.edu.jobprep.test;
+package nip.edu.jobprep.test.account;
 
 import nip.edu.jobprep.dto.FreezeAccountResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
 import nip.edu.jobprep.entity.User;
-import nip.edu.jobprep.exceptions.AccountNotFoundException;
 import nip.edu.jobprep.exceptions.AccountStatusConflictException;
 import nip.edu.jobprep.repositories.AccountHistoryRepository;
 import nip.edu.jobprep.repositories.AccountRepository;
