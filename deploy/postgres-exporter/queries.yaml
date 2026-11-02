@@ -1,0 +1,29 @@
+outbox_oldest_new_age_seconds:
+  query: |
+    SELECT COALESCE(EXTRACT(EPOCH FROM (now() - min(created_at))), 0) AS outbox_oldest_new_age_seconds
+    FROM outbox WHERE status = 'NEW'
+  metrics:
+    - outbox_oldest_new_age_seconds:
+        usage: "GAUGE"
+        description: "Age of the oldest NEW outbox event"
+
+outbox_deferred_retries:
+  query: |
+    SELECT COUNT(*) AS outbox_deferred_retries
+    FROM outbox
+    WHERE status = 'NEW' AND next_attempt_at IS NOT NULL AND next_attempt_at > now()
+  metrics:
+    - outbox_deferred_retries:
+        usage: "GAUGE"
+        description: "Events waiting for a scheduled retry"
+
+outbox_pending_by_status:
+  query: |
+    SELECT status, COUNT(*) AS outbox_db_pending
+    FROM outbox GROUP BY status
+  metrics:
+    - status:
+        usage: "LABEL"
+    - outbox_db_pending:
+        usage: "GAUGE"
+        description: "Outbox rows by status, measured in the database"

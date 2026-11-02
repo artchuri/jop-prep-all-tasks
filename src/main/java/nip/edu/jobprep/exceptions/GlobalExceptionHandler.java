@@ -43,4 +43,13 @@ public class GlobalExceptionHandler {
         detail.setTitle("transfer forbidden");
         return detail;
     }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ProblemDetail idempotencyConflict(IdempotencyConflictException exception) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, exception.getMessage());
+        detail.setTitle("idempotency conflict");
+        detail.setProperty("code", "IDEMPOTENCY_CONFLICT");
+        return detail;
+    }
 }

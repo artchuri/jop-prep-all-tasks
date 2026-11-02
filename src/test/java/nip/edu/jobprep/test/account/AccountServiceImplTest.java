@@ -41,6 +41,9 @@ public class AccountServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private nip.edu.jobprep.outbox.OutboxService outboxService;
+
     @Captor
     private ArgumentCaptor<Instant> changedAtCaptor;
 

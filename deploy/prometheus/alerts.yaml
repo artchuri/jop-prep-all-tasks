@@ -1,0 +1,44 @@
+groups:
+  - name: outbox
+    rules:
+      - alert: OutboxEventsPossiblyLost
+        expr: |
+          sum(rate(outbox_events_new_total[30m]))
+            - sum(rate(outbox_events_published_total[30m])) > 0.1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Outbox: события создаются, но не публикуются"
+
+      - alert: OutboxDeliverySlowP99
+        expr: histogram_quantile(0.99, sum(rate(outbox_delivery_seconds_bucket[5m])) by (le)) > 60
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Outbox p99 доставки > 60s"
+
+      - alert: OutboxQueueStuck
+        expr: outbox_oldest_new_age_seconds > 60
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Outbox: есть NEW событие старше 60 секунд"
+
+      - alert: OutboxEventRejected
+        expr: increase(outbox_events_rejected_total[15m]) > 0
+        labels: { severity: critical }
+        annotations:
+          summary: "Outbox: событие переведено в REJECTED после 5 попыток"
+
+      - alert: OutboxLeaseLost
+        expr: increase(outbox_lease_lost_total[15m]) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: "Outbox: потеря lease — возможна конкуренция инстансов"
+
+      - alert: OutboxRejectedBacklog
+        expr: outbox_pending{status="REJECTED"} > 0
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: "Outbox: {{ $value }} событий в REJECTED"

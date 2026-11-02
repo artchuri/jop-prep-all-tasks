@@ -5,11 +5,10 @@ import nip.edu.jobprep.dto.TransferResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
 import nip.edu.jobprep.entity.TransferHistory;
-import nip.edu.jobprep.exceptions.AccountNotFoundException;
-import nip.edu.jobprep.exceptions.AccountStatusConflictException;
-import nip.edu.jobprep.exceptions.InsufficientFundsException;
-import nip.edu.jobprep.exceptions.InvalidTransferException;
-import nip.edu.jobprep.exceptions.TransferForbiddenException;
+import nip.edu.jobprep.exceptions.*;
+import nip.edu.jobprep.outbox.DomainEvent;
+import nip.edu.jobprep.outbox.OutboxService;
+import nip.edu.jobprep.outbox.TransferCompletedPayload;
 import nip.edu.jobprep.repositories.AccountRepository;
 import nip.edu.jobprep.repositories.TransferRepository;
 import org.springframework.stereotype.Service;
@@ -25,15 +24,18 @@ public class TransferServiceImpl implements TransferService {
 
     private final AccountRepository accountRepository;
     private final TransferRepository transferRepository;
+    private final OutboxService outboxService;
 
-    public TransferServiceImpl(AccountRepository accountRepository, TransferRepository transferRepository) {
+    public TransferServiceImpl(AccountRepository accountRepository, TransferRepository transferRepository,
+                               OutboxService outboxService) {
         this.accountRepository = accountRepository;
         this.transferRepository = transferRepository;
+        this.outboxService = outboxService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TransferResponseDto transfer(String idempotencyKey, TransferRequestDto request) {
+    public TransferResponseDto transfer(String idempotencyKey, TransferRequestDto request) throws TransferForbiddenException, IdempotencyConflictException, InvalidTransferException {
         long fromId = request.fromAccountId();
         long toId = request.recipientAccountId();
         // сразу тут округлим без проверки что сумма не нулевая тк упали бы мы раньше еще на уровне контроллера вроде как
@@ -63,9 +65,16 @@ public class TransferServiceImpl implements TransferService {
         TransferHistory history = transferRepository.insertIfAbsent(fromId, toId, amount, now,
                 COMPLETED, idempotencyKey, from.getCurrency());
         if (history == null) {
-            return transferRepository.findByIdempotencyKey(idempotencyKey)
-                    .map(this::toResponse)
+            TransferHistory existing = transferRepository.findByIdempotencyKey(idempotencyKey)
                     .orElseThrow(() -> new IllegalStateException("transfer " + idempotencyKey + " not found"));
+            boolean same = existing.getAmount().compareTo(amount) == 0
+                    && existing.getFromAccountId() == fromId
+                    && existing.getRecipientAccountId() == toId;
+            if (!same){
+                throw new IdempotencyConflictException(
+                        "idempotency key was already used with different transfer parameters");
+            }
+            return toResponse(existing);
         }
 
 
@@ -88,6 +97,14 @@ public class TransferServiceImpl implements TransferService {
 
         accountRepository.updateAmount(from.getId(), from.getVersion(), from.getAmount().subtract(amount), now);
         accountRepository.updateAmount(to.getId(), to.getVersion(), to.getAmount().add(amount), now);
+
+        outboxService.publish(
+                DomainEvent.TRANSFER_COMPLETED,
+                request.userId(),
+                history.getId(),
+                new TransferCompletedPayload(history.getId(), idempotencyKey, fromId, toId,
+                        amount, from.getCurrency(), now),
+                now);
 
         return toResponse(history);
     }

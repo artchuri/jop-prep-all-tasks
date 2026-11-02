@@ -49,6 +49,9 @@ class TransferServiceImplTest {
     @Mock
     private TransferRepository transferRepository;
 
+    @Mock
+    private nip.edu.jobprep.outbox.OutboxService outboxService;
+
     @Test
     void shouldTransferSuccessfully_whenAccountsAreActive() {
         mockAccounts(account(1, 1, AccountStatus.ACTIVE, "100.00"),

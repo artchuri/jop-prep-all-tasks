@@ -42,17 +42,19 @@ public class AccountRepository {
                 .set(field("version"), expectedVersion + 1)
                 .where(field("id").eq(id).and(field("version").eq(expectedVersion)))
                 .returning(ACCOUNT_FIELDS).fetchOne();
+        assert record != null;
         return map(record);
     }
 
-    public Account updateAmount(long id, long expectedVersion, BigDecimal amount, Instant updatedAt) {
+    public void updateAmount(long id, long expectedVersion, BigDecimal amount, Instant updatedAt) {
         Record record = dsl.update(table("accounts"))
                 .set(field("amount"), amount)
                 .set(field("updated_at"), updatedAt)
                 .set(field("version"), expectedVersion + 1)
                 .where(field("id").eq(id).and(field("version").eq(expectedVersion)))
                 .returning(ACCOUNT_FIELDS).fetchOne();
-        return map(record);
+        assert record != null;
+        map(record);
     }
 
     private Account map(Record record) {

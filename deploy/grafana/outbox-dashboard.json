@@ -1,0 +1,326 @@
+{
+  "title": "Outbox  доставка событий в Kafka",
+  "uid": "outbox-sli",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Lost-event check: created − published (30m)",
+      "description": "Расхождение rate(created) и rate(published) за 30 минут = подозрение на потерю событий",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(outbox_events_new_total[30m])) - sum(rate(outbox_events_published_total[30m]))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Freshness SLI: p99 delivery < 60s",
+      "description": "histogram_quantile(0.99, rate(outbox_delivery_seconds_bucket[5m])) — цель < 60",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(outbox_delivery_seconds_bucket[5m])) by (le))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Throughput: created vs published (1m)",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(outbox_events_new_total[1m])) by (event_type)",
+          "legendFormat": "created {{event_type}}"
+        },
+        {
+          "expr": "sum(rate(outbox_events_published_total[1m])) by (event_type)",
+          "legendFormat": "published {{event_type}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "outbox_pending{status} — состояние очереди",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "sum(outbox_pending) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Delivery latency p50 / p95 / p99",
+      "gridPos": {
+        "x": 8,
+        "y": 6,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(outbox_delivery_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(outbox_delivery_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(outbox_delivery_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Здоровье publisher-а",
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(outbox_send_failures_total[5m])) by (error)",
+          "legendFormat": "send_failures {{error}}"
+        },
+        {
+          "expr": "sum(rate(outbox_events_rejected_total[5m])) by (event_type)",
+          "legendFormat": "rejected {{event_type}}"
+        },
+        {
+          "expr": "sum(rate(outbox_retries_total[5m]))",
+          "legendFormat": "retries"
+        },
+        {
+          "expr": "sum(rate(outbox_lease_lost_total[5m]))",
+          "legendFormat": "lease_lost"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Возраст самого старого NEW события",
+      "description": "«Застрявшая очередь» — виден даже без каунтеров",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "outbox_oldest_new_age_seconds",
+          "legendFormat": "oldest NEW"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        },
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {
+              "color": "green",
+              "value": null
+            },
+            {
+              "color": "yellow",
+              "value": 60
+            },
+            {
+              "color": "red",
+              "value": 300
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Отложенные ретраи (next_attempt_at в будущем)",
+      "gridPos": {
+        "x": 8,
+        "y": 13,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "outbox_deferred_retries",
+          "legendFormat": "deferred retries"
+        }
+      ],
+      "fieldConfig": {
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {
+              "color": "green",
+              "value": null
+            },
+            {
+              "color": "orange",
+              "value": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Batch size / poll duration",
+      "gridPos": {
+        "x": 16,
+        "y": 13,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "outbox_publisher_batch_size",
+          "legendFormat": "batch_size"
+        },
+        {
+          "expr": "rate(outbox_publisher_poll_seconds_sum[5m]) / clamp_min(rate(outbox_publisher_poll_seconds_count[5m]), 1e-9)",
+          "legendFormat": "poll mean"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Kafka producer (auto)",
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_producer_record_error_total[5m]))",
+          "legendFormat": "record errors"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(kafka_producer_request_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "broker p99"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API /v1/transfer + JVM health (auto)",
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{uri=\"/v1/transfer\"}[5m])) by (le))",
+          "legendFormat": "transfer p99"
+        },
+        {
+          "expr": "rate(jvm_gc_pause_seconds_sum[5m])",
+          "legendFormat": "gc pause rate"
+        },
+        {
+          "expr": "process_cpu_usage",
+          "legendFormat": "cpu"
+        },
+        {
+          "expr": "sum(hikaricp_connections_pending)",
+          "legendFormat": "hikari pending"
+        }
+      ]
+    }
+  ]
+}

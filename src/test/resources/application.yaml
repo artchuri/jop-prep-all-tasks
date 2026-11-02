@@ -8,3 +8,8 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
   jooq:
     sql-dialect: POSTGRES
+
+outbox:
+  publisher:
+    enabled: true
+
