@@ -1,5 +1,6 @@
-package nip.edu.jobprep.outbox;
+package nip.edu.jobprep.outbox.core;
 
+import nip.edu.jobprep.outbox.event.DomainEvent;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;

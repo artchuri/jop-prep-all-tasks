@@ -1,5 +1,6 @@
-package nip.edu.jobprep.service;
+package nip.edu.jobprep.repositories;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -36,9 +37,11 @@ public class AccountCacheService {
     }
 
     private final StringRedisTemplate redis;
+    private final MeterRegistry meters;
 
-    public AccountCacheService(StringRedisTemplate redis) {
+    public AccountCacheService(StringRedisTemplate redis, MeterRegistry meters) {
         this.redis = redis;
+        this.meters = meters;
     }
 
     public static String key(long accountId) {
@@ -47,9 +50,23 @@ public class AccountCacheService {
 
     public ReadResult read(long accountId) {
         String token = UUID.randomUUID().toString();
-        List<String> r = raw(redis.execute(READ_SCRIPT, List.of(key(accountId)),
-                String.valueOf(LEASE_MS), token, String.valueOf(MARGIN_MS)));
-        return ReadResult.of(r, token);
+        long start = System.nanoTime();
+        List<String> r;
+        try {
+            r = raw(redis.execute(READ_SCRIPT, List.of(key(accountId)),
+                    String.valueOf(LEASE_MS), token, String.valueOf(MARGIN_MS)));
+        } finally {
+            meters.timer("cache_redis_latency_seconds", "op", "read")
+                    .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
+        ReadResult result = ReadResult.of(r, token);
+        meters.counter("cache_requests_total", "result", switch (result.status()) {
+            case HIT -> "hit";
+            case STALE -> "stale";
+            case LEASE -> "miss_lease";
+            case WAIT -> "wait";
+        }).increment();
+        return result;
     }
 
     public void fill(long accountId, String token, long version, String balance, String status) {
@@ -59,8 +76,14 @@ public class AccountCacheService {
     }
 
     public void invalidate(long accountId, long newVersion) {
-        raw(redis.execute(INVALIDATE_SCRIPT, List.of(key(accountId)),
-                String.valueOf(newVersion), String.valueOf(STALE_MS)));
+        long start = System.nanoTime();
+        try {
+            raw(redis.execute(INVALIDATE_SCRIPT, List.of(key(accountId)),
+                    String.valueOf(newVersion), String.valueOf(STALE_MS)));
+        } finally {
+            meters.timer("cache_redis_latency_seconds", "op", "invalidate")
+                    .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
     }
 
     public void release(long accountId, String token) {

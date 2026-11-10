@@ -1,0 +1,18 @@
+{
+  "properties": [
+    {
+      "name": "spring.datasource.hikari.connection-timeout",
+      "type": "java.lang.String",
+      "description": "Description for spring.datasource.hikari.connection-timeout."
+    },
+    {
+      "name": "spring.datasource.hikari.minimum-idle",
+      "type": "java.lang.String",
+      "description": "Description for spring.datasource.hikari.minimum-idle."
+    },
+    {
+      "name": "spring.datasource.hikari.maximum-pool-size",
+      "type": "java.lang.String",
+      "description": "Description for spring.datasource.hikari.maximum-pool-size."
+    }
+  ] }

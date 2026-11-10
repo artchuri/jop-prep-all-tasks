@@ -1,7 +1,3 @@
--- Cache-aside READ with lease + stale (ACC-106 D-01, invariants I-3, I-5, I-6, I-7).
--- KEYS[1] = account hash key
--- ARGV[1] = lease ms, ARGV[2] = new lease token, ARGV[3] = ttl margin ms
--- Returns: {HIT, bal, st, ver} | {STALE, bal, st, ver} | {LEASE, token} | {WAIT, ''}
 local k = KEYS[1]
 local leaseMs = tonumber(ARGV[1])
 local token = ARGV[2]

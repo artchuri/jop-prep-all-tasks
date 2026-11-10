@@ -1,4 +1,4 @@
-package nip.edu.jobprep.outbox;
+package nip.edu.jobprep.outbox.core;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;

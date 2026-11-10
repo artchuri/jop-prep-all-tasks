@@ -42,7 +42,7 @@ public class AccountServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private nip.edu.jobprep.outbox.OutboxService outboxService;
+    private nip.edu.jobprep.outbox.core.OutboxService outboxService;
 
     @Mock
     private org.springframework.context.ApplicationEventPublisher events;

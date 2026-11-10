@@ -2,9 +2,9 @@ package nip.edu.jobprep.cache;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import nip.edu.jobprep.dto.AccountResponseDto;
-import nip.edu.jobprep.outbox.AccountCacheInvalidationConsumer;
-import nip.edu.jobprep.service.AccountCacheService;
-import nip.edu.jobprep.service.AccountQueryService;
+import nip.edu.jobprep.outbox.delivery.AccountCacheInvalidationConsumer;
+import nip.edu.jobprep.repositories.AccountCacheService;
+import nip.edu.jobprep.service.AccountService;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +38,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
     AccountCacheService cache;
 
     @Autowired
-    AccountQueryService queryService;
+    AccountService accountService;
 
     @Autowired
     AccountCacheInvalidationConsumer consumer;
@@ -99,14 +99,14 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
 
     @Test
     void firstGetFillsCacheAndSecondIsHitWithoutPg() {
-        AccountResponseDto first = queryService.get(1);
+        AccountResponseDto first = accountService.get(1);
         assertThat(first.balance()).isEqualByComparingTo("100.00");
         assertThat(cache.field(1, "state")).isEqualTo("F");
 
         // Break the DB read path by renaming the table: a HIT must not touch PG.
         jdbc.update("alter table accounts rename to accounts_shadow");
         try {
-            AccountResponseDto second = queryService.get(1);
+            AccountResponseDto second = accountService.get(1);
             assertThat(second.version()).isEqualTo(first.version());
             assertThat(second.balance()).isEqualByComparingTo("100.00");
         } finally {
@@ -116,20 +116,20 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
 
     @Test
     void tier1InvalidateAfterCommitForcesPgReload() {
-        queryService.get(1); // fill FRESH v0
+        accountService.get(1); // fill FRESH v0
         jdbc.update("update accounts set amount = 70.00, version = 1 where id = 1");
 
         // Tier 1 invalidation directly (the AFTER_COMMIT listener calls the same method)
         cache.invalidate(1, 1);
 
         await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
-                assertThat(queryService.get(1).version()).isEqualTo(1L));
-        assertThat(queryService.get(1).balance()).isEqualByComparingTo("70.00");
+                assertThat(accountService.get(1).version()).isEqualTo(1L));
+        assertThat(accountService.get(1).balance()).isEqualByComparingTo("70.00");
     }
 
     @Test
     void tier2ConsumerInvalidatesAndCommitsOnlyAfterSuccess() throws Exception {
-        queryService.get(1); // fill FRESH v0
+        accountService.get(1); // fill FRESH v0
         jdbc.update("update accounts set amount = 55.00, version = 3 where id = 1");
 
         Map<String, Object> payload = Map.of("accountId", 1, "version", 3);
@@ -150,13 +150,13 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
                 new org.apache.kafka.clients.consumer.ConsumerRecord<>("account-events", 0, 0, "1", envelope);
         consumer.onMessage(rec, () -> { });
 
-        assertThat(queryService.get(1).version()).isEqualTo(3L);
-        assertThat(queryService.get(1).balance()).isEqualByComparingTo("55.00");
+        assertThat(accountService.get(1).version()).isEqualTo(3L);
+        assertThat(accountService.get(1).balance()).isEqualByComparingTo("55.00");
     }
 
     @Test
     void staleEventWithOlderVersionIsRejected() throws Exception {
-        queryService.get(1); // FRESH v0
+        accountService.get(1); // FRESH v0
         // Older-version invalidate must be a NOOP: state stays F with v0
         cache.invalidate(1, -5); // older than cached ver 0
         assertThat(cache.field(1, "state")).isEqualTo("F");
@@ -177,10 +177,10 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
 
     @Test
     void redisDownFallsBackToPgAndResponseIsServed() {
-        queryService.get(1); // warm
+        accountService.get(1); // warm
         TestRedis.REDIS_PROXY.setConnectionCut(true);
         try {
-            AccountResponseDto dto = queryService.get(1);
+            AccountResponseDto dto = accountService.get(1);
             assertThat(dto.accountId()).isEqualTo(1L);
             assertThat(dto.balance()).isEqualByComparingTo("100.00");
             assertThat(dto.version()).isEqualTo(pgVersion(1));
@@ -198,7 +198,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
         AccountCacheService.ReadResult r2 = cache.read(1);
         assertThat(r2.status()).isEqualTo(AccountCacheService.Status.WAIT);
         cache.fill(1, r1.token(), 0, "100.00", "ACTIVE");
-        AccountResponseDto dto = queryService.get(1);
+        AccountResponseDto dto = accountService.get(1);
         assertThat(dto.version()).isEqualTo(0L);
     }
 }

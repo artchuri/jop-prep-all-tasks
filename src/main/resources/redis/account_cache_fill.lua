@@ -1,5 +1,3 @@
--- FILL: only the lease owner may write; rejects older versions (I-1).
--- Only place that (re)sets the record TTL (I-5). ARGV: token, version, bal, st, ttlMs.
 local k = KEYS[1]
 local token = ARGV[1]
 local loadedVer = tonumber(ARGV[2])

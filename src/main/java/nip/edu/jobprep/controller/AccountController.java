@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.dto.FreezeAccountRequestDto;
 import nip.edu.jobprep.dto.FreezeAccountResponseDto;
-import nip.edu.jobprep.service.AccountQueryService;
 import nip.edu.jobprep.service.AccountService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -19,19 +18,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/account")
 public class AccountController {
     private final AccountService accountService;
-    private final AccountQueryService accountQueryService;
 
-    public AccountController(AccountService accountService, AccountQueryService accountQueryService) {
+    public AccountController(AccountService accountService) {
         this.accountService = accountService;
-        this.accountQueryService = accountQueryService;
     }
 
-
+    /**
+     * Cache-aside read. May serve slightly stale data (bounded staleness, see README);
+     * never used for financial decisions. no-store keeps intermediaries out.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<AccountResponseDto> get(@PathVariable long id) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .body(accountQueryService.get(id));
+                .body(accountService.get(id));
     }
 
     @PostMapping("/{id}/freeze")

@@ -1,7 +1,9 @@
-package nip.edu.jobprep.outbox;
+package nip.edu.jobprep.outbox.delivery;
+
+import nip.edu.jobprep.outbox.event.AccountCacheInvalidationRequested;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import nip.edu.jobprep.service.AccountCacheService;
+import nip.edu.jobprep.repositories.AccountCacheService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

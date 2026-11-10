@@ -2,8 +2,9 @@ package nip.edu.jobprep.cache;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import nip.edu.jobprep.dto.TransferRequestDto;
-import nip.edu.jobprep.service.AccountCacheService;
-import nip.edu.jobprep.service.AccountQueryService;
+import nip.edu.jobprep.repositories.AccountCacheService;
+import nip.edu.jobprep.service.AccountService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,7 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
     AccountCacheService cache;
 
     @Autowired
-    AccountQueryService queryService;
+    AccountService accountService;
 
     @Autowired
     StringRedisTemplate redis;
@@ -80,8 +81,8 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
     @Test
     void rollbackLeavesCacheUntouched() {
         // Warm cache from both accounts
-        queryService.get(1);
-        queryService.get(2);
+        accountService.get(1);
+        accountService.get(2);
         assertThat(cache.field(1, "state")).isEqualTo("F");
         assertThat(cache.field(2, "state")).isEqualTo("F");
 

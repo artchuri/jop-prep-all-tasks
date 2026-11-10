@@ -70,6 +70,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/outbox-dashboard.json:/var/lib/grafana/dashboards/outbox-dashboard.json:ro
+      - ./grafana/cache-dashboard.json:/var/lib/grafana/dashboards/cache-dashboard.json:ro
     depends_on:
       - prometheus
 

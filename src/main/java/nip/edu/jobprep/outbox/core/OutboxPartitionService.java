@@ -1,4 +1,4 @@
-package nip.edu.jobprep.outbox;
+package nip.edu.jobprep.outbox.core;
 
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;

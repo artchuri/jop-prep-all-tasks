@@ -1,5 +1,3 @@
--- INVALIDATE: never lowers version (I-2), annuls any lease, FRESH -> STALE.
--- ARGV[1] = new version (always known in this codebase), ARGV[2] = stale window ms.
 local k = KEYS[1]
 local newVer = tonumber(ARGV[1])
 local staleMs = tonumber(ARGV[2])

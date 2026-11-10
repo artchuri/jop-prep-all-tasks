@@ -1,4 +1,6 @@
-package nip.edu.jobprep.outbox;
+package nip.edu.jobprep.outbox.core;
+
+import nip.edu.jobprep.outbox.event.DomainEvent;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import nip.edu.jobprep.test.integration.AbstractIntegrationTest;

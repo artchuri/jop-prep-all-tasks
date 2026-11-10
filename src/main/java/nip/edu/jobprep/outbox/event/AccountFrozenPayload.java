@@ -1,4 +1,4 @@
-package nip.edu.jobprep.outbox;
+package nip.edu.jobprep.outbox.event;
 
 import java.time.Instant;
 

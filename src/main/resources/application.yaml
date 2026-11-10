@@ -1,21 +1,26 @@
 spring:
   application:
     name: job-prep
-  datasource:
 
+  datasource:
     url: jdbc:postgresql://localhost:5432/job_prep
     username: admin
     password: admin
     driver-class-name: org.postgresql.Driver
-    dbcp2:
-      pool-prepared-statements: on
-    oracleucp:
-      max-pool-size: 100
+
+    hikari:
+      maximum-pool-size: 250
+      minimum-idle: 10
+      connection-timeout: 3000
+      pool-name: job-prep-pg-pool
+
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
+
   jooq:
     sql-dialect: POSTGRES
+
   data:
     redis:
       host: localhost
@@ -41,6 +46,7 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: manual
+
 management:
   health:
     redis:
