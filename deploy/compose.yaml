@@ -33,6 +33,17 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
+  redis:
+    image: redis:7-alpine
+    container_name: job-prep-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   prometheus:
     image: prom/prometheus:v2.53.0
     container_name: job-prep-prometheus
