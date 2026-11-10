@@ -1,5 +1,6 @@
 package nip.edu.jobprep.service;
 
+import nip.edu.jobprep.cache.AccountCacheInvalidationRequested;
 import nip.edu.jobprep.dto.TransferRequestDto;
 import nip.edu.jobprep.dto.TransferResponseDto;
 import nip.edu.jobprep.entity.Account;
@@ -11,6 +12,7 @@ import nip.edu.jobprep.outbox.OutboxService;
 import nip.edu.jobprep.outbox.TransferCompletedPayload;
 import nip.edu.jobprep.repositories.AccountRepository;
 import nip.edu.jobprep.repositories.TransferRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +27,14 @@ public class TransferServiceImpl implements TransferService {
     private final AccountRepository accountRepository;
     private final TransferRepository transferRepository;
     private final OutboxService outboxService;
+    private final ApplicationEventPublisher events;
 
     public TransferServiceImpl(AccountRepository accountRepository, TransferRepository transferRepository,
-                               OutboxService outboxService) {
+                               OutboxService outboxService, ApplicationEventPublisher events) {
         this.accountRepository = accountRepository;
         this.transferRepository = transferRepository;
         this.outboxService = outboxService;
+        this.events = events;
     }
 
     @Override
@@ -38,7 +42,6 @@ public class TransferServiceImpl implements TransferService {
     public TransferResponseDto transfer(String idempotencyKey, TransferRequestDto request) throws TransferForbiddenException, IdempotencyConflictException, InvalidTransferException {
         long fromId = request.fromAccountId();
         long toId = request.recipientAccountId();
-        // сразу тут округлим без проверки что сумма не нулевая тк упали бы мы раньше еще на уровне контроллера вроде как
         BigDecimal amount = request.amount().setScale(2, RoundingMode.DOWN);
 
         if (fromId == toId) {
@@ -48,10 +51,6 @@ public class TransferServiceImpl implements TransferService {
             throw new InvalidTransferException("amount must be positive");
         }
 
-
-
-        // лок имеется ввиду из за селект фор апдейт на бд
-        // правило лока сначала берется минимальный айди и блокируется а затем максимальный что гарантирпует нам что локи будут взяты в одном порядке
         Account first = lock(Math.min(fromId, toId));
         Account second = lock(Math.max(fromId, toId));
         Account from = fromId == first.getId() ? first : second;
@@ -74,10 +73,13 @@ public class TransferServiceImpl implements TransferService {
                 throw new IdempotencyConflictException(
                         "idempotency key was already used with different transfer parameters");
             }
+            // Idempotent replay: state was not changed by this attempt, but the cache must still be
+            // invalidated (Tier 1) in case the original invalidation was lost. invalidate() is
+            // idempotent and version-guarded, so this is always safe.
+            events.publishEvent(new AccountCacheInvalidationRequested(fromId, from.getVersion()));
+            events.publishEvent(new AccountCacheInvalidationRequested(toId, to.getVersion()));
             return toResponse(existing);
         }
-
-
 
         if (!from.getCurrency().equals(to.getCurrency())) {
             throw new InvalidTransferException("accounts have different currencies");
@@ -103,8 +105,12 @@ public class TransferServiceImpl implements TransferService {
                 request.userId(),
                 history.getId(),
                 new TransferCompletedPayload(history.getId(), idempotencyKey, fromId, toId,
-                        amount, from.getCurrency(), now),
+                        amount, from.getCurrency(), from.getVersion() + 1, to.getVersion() + 1, now),
                 now);
+
+        // Tier 1: published inside the transaction, delivered by the AFTER_COMMIT listener.
+        events.publishEvent(new AccountCacheInvalidationRequested(fromId, from.getVersion() + 1));
+        events.publishEvent(new AccountCacheInvalidationRequested(toId, to.getVersion() + 1));
 
         return toResponse(history);
     }

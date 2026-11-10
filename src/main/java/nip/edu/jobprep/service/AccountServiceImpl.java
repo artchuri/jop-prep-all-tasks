@@ -1,5 +1,6 @@
 package nip.edu.jobprep.service;
 
+import nip.edu.jobprep.cache.AccountCacheInvalidationRequested;
 import nip.edu.jobprep.dto.FreezeAccountResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
@@ -10,6 +11,7 @@ import nip.edu.jobprep.outbox.DomainEvent;
 import nip.edu.jobprep.outbox.OutboxService;
 import nip.edu.jobprep.repositories.AccountHistoryRepository;
 import nip.edu.jobprep.repositories.AccountRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +22,14 @@ public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final AccountHistoryRepository historyRepository;
     private final OutboxService outboxService;
+    private final ApplicationEventPublisher events;
 
     public AccountServiceImpl(AccountRepository accountRepository, AccountHistoryRepository historyRepository,
-                              OutboxService outboxService) {
+                              OutboxService outboxService, ApplicationEventPublisher events) {
         this.accountRepository = accountRepository;
         this.historyRepository = historyRepository;
         this.outboxService = outboxService;
+        this.events = events;
     }
 
     @Override
@@ -47,8 +51,11 @@ public class AccountServiceImpl implements AccountService {
                 account.getUser().getId(),
                 accountId,
                 new AccountFrozenPayload(accountId, account.getStatus().name(), AccountStatus.FROZEN.name(),
-                        changedByUserId, now),
+                        updated.getVersion(), changedByUserId, now),
                 now);
+
+        // Tier 1: delivered by the AFTER_COMMIT listener after this transaction commits.
+        events.publishEvent(new AccountCacheInvalidationRequested(accountId, updated.getVersion()));
 
         return toResponse(updated);
     }

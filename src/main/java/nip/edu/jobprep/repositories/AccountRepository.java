@@ -46,6 +46,13 @@ public class AccountRepository {
         return map(record);
     }
 
+    /** Plain read without row lock: used by the cache-aside query path only. */
+    public Optional<Account> findById(long id) {
+        Record record = dsl.select().from(table("accounts"))
+                .where(field("id").eq(id)).fetchOne();
+        return Optional.ofNullable(record).map(this::map);
+    }
+
     public void updateAmount(long id, long expectedVersion, BigDecimal amount, Instant updatedAt) {
         Record record = dsl.update(table("accounts"))
                 .set(field("amount"), amount)

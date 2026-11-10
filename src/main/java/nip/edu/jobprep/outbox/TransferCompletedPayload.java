@@ -10,6 +10,8 @@ public record TransferCompletedPayload(
         long recipientAccountId,
         BigDecimal amount,
         String currency,
+        long fromAccountVersion,
+        long toAccountVersion,
         Instant occurredAt
 ) {
 }

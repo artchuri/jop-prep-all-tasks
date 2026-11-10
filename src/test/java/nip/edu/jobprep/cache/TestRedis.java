@@ -5,13 +5,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
 
-/**
- * Shared Redis + Toxiproxy containers for cache integration tests.
- * All traffic to Redis goes through the Toxiproxy proxy so tests can inject
- * network failures (latency, cutoffs) without restarting containers.
- * Both containers share one Docker network: toxiproxy reaches Redis by
- * network alias, tests reach the proxy from the host.
- */
+
 final class TestRedis {
 
     static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
@@ -35,12 +29,10 @@ final class TestRedis {
         REDIS_PROXY = TOXIPROXY.getProxy("redis", 6379);
     }
 
-    /** Host:port of Redis as seen from the host through the proxy. */
     static String proxyAddress() {
         return REDIS_PROXY.getContainerIpAddress() + ":" + REDIS_PROXY.getProxyPort();
     }
 
-    /** Host:port of Redis bypassing the proxy (host-mapped direct port). */
     static String directAddress() {
         return REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
     }

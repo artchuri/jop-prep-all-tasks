@@ -52,6 +52,9 @@ class TransferServiceImplTest {
     @Mock
     private nip.edu.jobprep.outbox.OutboxService outboxService;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher events;
+
     @Test
     void shouldTransferSuccessfully_whenAccountsAreActive() {
         mockAccounts(account(1, 1, AccountStatus.ACTIVE, "100.00"),

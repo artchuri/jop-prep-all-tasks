@@ -44,6 +44,9 @@ public class AccountServiceImplTest {
     @Mock
     private nip.edu.jobprep.outbox.OutboxService outboxService;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher events;
+
     @Captor
     private ArgumentCaptor<Instant> changedAtCaptor;
 
