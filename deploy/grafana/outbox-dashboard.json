@@ -150,19 +150,19 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(outbox_send_failures_total[5m])) by (error)",
+          "expr": "sum(rate(outbox_send_failures_total[5m])) by (error) or vector(0)",
           "legendFormat": "send_failures {{error}}"
         },
         {
-          "expr": "sum(rate(outbox_events_rejected_total[5m])) by (event_type)",
+          "expr": "sum(rate(outbox_events_rejected_total[5m])) by (event_type) or vector(0)",
           "legendFormat": "rejected {{event_type}}"
         },
         {
-          "expr": "sum(rate(outbox_retries_total[5m]))",
+          "expr": "sum(rate(outbox_retries_total[5m])) or vector(0)",
           "legendFormat": "retries"
         },
         {
-          "expr": "sum(rate(outbox_lease_lost_total[5m]))",
+          "expr": "sum(rate(outbox_lease_lost_total[5m])) or vector(0)",
           "legendFormat": "lease_lost"
         }
       ]

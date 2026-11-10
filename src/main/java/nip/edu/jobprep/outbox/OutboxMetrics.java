@@ -22,6 +22,29 @@ public class OutboxMetrics {
         Gauge.builder("outbox_publisher_batch_size", batchSize, ref -> ref.get().doubleValue())
                 .description("Number of rows claimed in the last poll batch")
                 .register(registry);
+
+
+        Counter.builder("outbox_send_failures")
+                .description("Outbox Kafka send failures")
+                .tag("event_type", UNKNOWN)
+                .tag("error", UNKNOWN)
+                .register(registry);
+        Counter.builder("outbox_events_rejected")
+                .description("Outbox events rejected after max attempts")
+                .tag("event_type", UNKNOWN)
+                .register(registry);
+        Counter.builder("outbox_retries")
+                .description("Outbox delivery retries")
+                .register(registry);
+        Counter.builder("outbox_lease_lost")
+                .description("Lease renewals lost to another owner")
+                .register(registry);
+
+        Timer.builder("outbox_delivery_seconds")
+                .description("Outbox event delivery duration")
+                .tag("event_type", UNKNOWN)
+                .publishPercentileHistogram()
+                .register(registry);
     }
 
 
