@@ -1,11 +1,11 @@
 package nip.edu.jobprep.service;
 
-import nip.edu.jobprep.cache.AccountCacheInvalidationRequested;
 import nip.edu.jobprep.dto.FreezeAccountResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
 import nip.edu.jobprep.exceptions.AccountNotFoundException;
 import nip.edu.jobprep.exceptions.AccountStatusConflictException;
+import nip.edu.jobprep.outbox.AccountCacheInvalidationRequested;
 import nip.edu.jobprep.outbox.AccountFrozenPayload;
 import nip.edu.jobprep.outbox.DomainEvent;
 import nip.edu.jobprep.outbox.OutboxService;
@@ -54,7 +54,6 @@ public class AccountServiceImpl implements AccountService {
                         updated.getVersion(), changedByUserId, now),
                 now);
 
-        // Tier 1: delivered by the AFTER_COMMIT listener after this transaction commits.
         events.publishEvent(new AccountCacheInvalidationRequested(accountId, updated.getVersion()));
 
         return toResponse(updated);

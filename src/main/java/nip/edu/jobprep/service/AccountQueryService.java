@@ -1,5 +1,6 @@
-package nip.edu.jobprep.cache;
+package nip.edu.jobprep.service;
 
+import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.exceptions.AccountNotFoundException;
 import nip.edu.jobprep.repositories.AccountRepository;
@@ -29,7 +30,6 @@ public class AccountQueryService {
                 case WAIT -> waitThenReload(accountId);
             };
         } catch (Exception redisUnavailable) {
-            // Redis errors must not break reads: fall back to PostgreSQL without caching.
             return fallbackFromPg(accountId);
         }
     }
@@ -40,7 +40,6 @@ public class AccountQueryService {
             cache.fill(accountId, token, account.getVersion(),
                     account.getAmount().toPlainString(), account.getStatus().name());
         } catch (Exception fillRejected) {
-            // rejected fill (token void / older version / evicted): value was still fresh when read
         }
         return toDto(account);
     }
@@ -56,7 +55,6 @@ public class AccountQueryService {
                 return loadAndFill(accountId, r.token());
             }
         }
-        // Controllled fallback through bulkhead-limited PG path; no cache write.
         return fallbackFromPg(accountId);
     }
 

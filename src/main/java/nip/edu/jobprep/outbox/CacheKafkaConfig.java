@@ -1,4 +1,4 @@
-package nip.edu.jobprep.cache;
+package nip.edu.jobprep.outbox;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,12 +1,12 @@
 package nip.edu.jobprep.service;
 
-import nip.edu.jobprep.cache.AccountCacheInvalidationRequested;
 import nip.edu.jobprep.dto.TransferRequestDto;
 import nip.edu.jobprep.dto.TransferResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
 import nip.edu.jobprep.entity.TransferHistory;
 import nip.edu.jobprep.exceptions.*;
+import nip.edu.jobprep.outbox.AccountCacheInvalidationRequested;
 import nip.edu.jobprep.outbox.DomainEvent;
 import nip.edu.jobprep.outbox.OutboxService;
 import nip.edu.jobprep.outbox.TransferCompletedPayload;

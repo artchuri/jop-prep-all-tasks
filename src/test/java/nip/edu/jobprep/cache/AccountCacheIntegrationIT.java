@@ -1,6 +1,10 @@
 package nip.edu.jobprep.cache;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import nip.edu.jobprep.dto.AccountResponseDto;
+import nip.edu.jobprep.outbox.AccountCacheInvalidationConsumer;
+import nip.edu.jobprep.service.AccountCacheService;
+import nip.edu.jobprep.service.AccountQueryService;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;

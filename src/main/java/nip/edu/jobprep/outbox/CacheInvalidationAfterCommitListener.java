@@ -1,6 +1,7 @@
-package nip.edu.jobprep.cache;
+package nip.edu.jobprep.outbox;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import nip.edu.jobprep.service.AccountCacheService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

@@ -1,7 +1,7 @@
-package nip.edu.jobprep.cache;
+package nip.edu.jobprep.outbox;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import nip.edu.jobprep.outbox.DomainEvent;
+import nip.edu.jobprep.service.AccountCacheService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
