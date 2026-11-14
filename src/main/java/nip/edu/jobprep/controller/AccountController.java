@@ -23,10 +23,7 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    /**
-     * Cache-aside read. May serve slightly stale data (bounded staleness, see README);
-     * never used for financial decisions. no-store keeps intermediaries out.
-     */
+
     @GetMapping("/{id}")
     public ResponseEntity<AccountResponseDto> get(@PathVariable long id) {
         return ResponseEntity.ok()

@@ -2,7 +2,9 @@ package nip.edu.jobprep.outbox.delivery;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import nip.edu.jobprep.outbox.event.DomainEvent;
-import nip.edu.jobprep.repositories.AccountCacheService;
+import nip.edu.jobprep.utils.cache.LuaCache;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,17 +24,17 @@ public class AccountCacheInvalidationConsumer {
     private static final Logger log = LoggerFactory.getLogger(AccountCacheInvalidationConsumer.class);
     private static final TypeReference<Map<String, Object>> ENVELOPE = new TypeReference<>() {};
 
-    private final AccountCacheService cache;
+    private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meters;
 
-    public AccountCacheInvalidationConsumer(AccountCacheService cache, ObjectMapper objectMapper, MeterRegistry meters) {
-        this.cache = cache;
+    public AccountCacheInvalidationConsumer(CacheManager cacheManager, ObjectMapper objectMapper, MeterRegistry meters) {
+        this.cacheManager = cacheManager;
         this.objectMapper = objectMapper;
         this.meters = meters;
     }
 
-    @KafkaListener(topics = "account-events", groupId = "account-cache-invalidation")
+    @KafkaListener(topics = "#{T(nip.edu.jobprep.model.GlobalValues).KAFKA_TOPIC}", groupId = "account-cache-invalidation")
     public void onMessage(ConsumerRecord<String, String> record, Acknowledgment ack) {
         Map<String, Object> envelope;
         try {
@@ -45,19 +47,46 @@ public class AccountCacheInvalidationConsumer {
         }
         String type = String.valueOf(envelope.get("eventType"));
 
-        Map<String, Object> payload = (Map<String, Object>) envelope.get("payload");
-        if (DomainEvent.ACCOUNT_FROZEN.equals(type)) {
-            cache.invalidate(num(payload.get("accountId")), num(payload.get("version")));
-        } else if (DomainEvent.TRANSFER_COMPLETED.equals(type)) {
-            cache.invalidate(num(payload.get("fromAccountId")), num(payload.get("fromAccountVersion")));
-            cache.invalidate(num(payload.get("recipientAccountId")), num(payload.get("toAccountVersion")));
-        } else {
-            meters.counter("cache_invalidation_total", "tier", "kafka", "result", "skipped_type").increment();
+        // Extract target accounts/versions first: a malformed payload is permanent
+        // (ack, never retried), while Redis failures during invalidate are transient
+        // (propagated to the error handler -> retry with backoff, offset not committed).
+        long[][] targets;
+        try {
+            Map<String, Object> payload = (Map<String, Object>) envelope.get("payload");
+            if (payload == null) {
+                throw new IllegalArgumentException("payload is missing");
+            }
+            if (DomainEvent.ACCOUNT_FROZEN.equals(type)) {
+                targets = new long[][]{{num(payload.get("accountId")), num(payload.get("version"))}};
+            } else if (DomainEvent.TRANSFER_COMPLETED.equals(type)) {
+                targets = new long[][]{
+                        {num(payload.get("fromAccountId")), num(payload.get("fromAccountVersion"))},
+                        {num(payload.get("recipientAccountId")), num(payload.get("toAccountVersion"))}};
+            } else {
+                meters.counter("cache_invalidation_total", "tier", "kafka", "result", "skipped_type").increment();
+                ack.acknowledge();
+                return;
+            }
+        } catch (RuntimeException malformed) {
+            meters.counter("cache_invalidation_errors_total", "tier", "kafka", "reason", "malformed_payload").increment();
+            log.error("malformed cache invalidation payload at {}-{}: {}", record.partition(), record.offset(), record.value());
             ack.acknowledge();
             return;
         }
+        for (long[] target : targets) {
+            invalidate(target[0], target[1]);
+        }
         meters.counter("cache_invalidation_total", "tier", "kafka").increment();
         ack.acknowledge();
+    }
+
+    private void invalidate(long accountId, long version) {
+        Cache cache = cacheManager.getCache(LuaCache.NAME);
+        if (cache == null) {
+            meters.counter("cache_invalidation_errors_total", "tier", "kafka", "reason", "no_cache").increment();
+            return;
+        }
+        cache.evict(new LuaCache.Invalidate(accountId, version));
     }
 
     private static long num(Object value) {

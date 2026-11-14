@@ -1,5 +1,6 @@
 package nip.edu.jobprep.outbox.core;
 
+import nip.edu.jobprep.model.GlobalValues;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
@@ -11,8 +12,8 @@ import java.time.Instant;
 @Component
 public class OutboxGauges {
 
-    public OutboxGauges(OutboxRepository outboxRepository, MeterRegistry meterRegistry) {
-        for (String status : new String[]{"NEW", "PROCESSING", "REJECTED"}) {
+    public OutboxGauges(OutboxStatsRepository outboxRepository, MeterRegistry meterRegistry) {
+        for (String status : new String[]{GlobalValues.STATUS_NEW, GlobalValues.STATUS_PROCESSING, GlobalValues.STATUS_REJECTED}) {
             Gauge.builder("outbox_pending", () -> outboxRepository.countByStatus(status))
                     .tag("status", status)
                     .description("Outbox rows currently in status")

@@ -44,6 +44,61 @@ services:
       timeout: 3s
       retries: 10
 
+  app-a:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: job-prep-app-a
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/job_prep
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # Cache TTL is decided HERE, in the deployment descriptor - not in code.
+      # 60 s +-9 s jitter => actual TTL 51..69 s (never served stale longer than 69 s).
+      ACCOUNT_CACHE_TTL_MS: "60000"
+      ACCOUNT_CACHE_TTL_JITTER_MS: "9000"
+      ACCOUNT_CACHE_LEASE_MS: "3000"
+      ACCOUNT_CACHE_MARGIN_MS: "1000"
+      ACCOUNT_CACHE_STALE_MS: "5000"
+      ACCOUNT_CACHE_WAIT_ATTEMPTS: "3"
+      ACCOUNT_CACHE_WAIT_PAUSE_MS: "20"
+
+  app-b:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: job-prep-app-b
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/job_prep
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # Same TTL knobs as app-a (51..69 s). Both instances must agree on the bound.
+      ACCOUNT_CACHE_TTL_MS: "60000"
+      ACCOUNT_CACHE_TTL_JITTER_MS: "9000"
+      ACCOUNT_CACHE_LEASE_MS: "3000"
+      ACCOUNT_CACHE_MARGIN_MS: "1000"
+      ACCOUNT_CACHE_STALE_MS: "5000"
+      ACCOUNT_CACHE_WAIT_ATTEMPTS: "3"
+      ACCOUNT_CACHE_WAIT_PAUSE_MS: "20"
+
   prometheus:
     image: prom/prometheus:v2.53.0
     container_name: job-prep-prometheus

@@ -1,4 +1,4 @@
-package nip.edu.jobprep.outbox.delivery;
+package nip.edu.jobprep.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,7 +8,8 @@ import org.springframework.util.backoff.FixedBackOff;
 
 
 @Configuration
-public class CacheKafkaConfig {
+public class KafkaConfig {
+
 
     @Bean
     public CommonErrorHandler cacheInvalidationErrorHandler() {

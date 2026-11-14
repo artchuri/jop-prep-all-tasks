@@ -63,7 +63,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(cache_invalidation_total{tier=\"inline\"}[5m]))",
+          "expr": "sum(rate(cache_evict_total{result=\"success\"}[5m]))",
           "legendFormat": "inline"
         },
         {
@@ -90,11 +90,11 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, op) (rate(cache_redis_latency_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le, op, outcome) (rate(cache_redis_latency_seconds_bucket[5m])))",
           "legendFormat": "p50 {{op}}"
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (le, op) (rate(cache_redis_latency_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le, op, outcome) (rate(cache_redis_latency_seconds_bucket[5m])))",
           "legendFormat": "p99 {{op}}"
         }
       ],
@@ -117,7 +117,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (tier) (rate(cache_invalidation_errors_total[5m]))",
+          "expr": "sum by (operation) (rate(cache_errors_total[5m]))",
           "legendFormat": "{{tier}}"
         }
       ],

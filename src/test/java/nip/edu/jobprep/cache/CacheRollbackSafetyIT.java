@@ -1,9 +1,12 @@
 package nip.edu.jobprep.cache;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import nip.edu.jobprep.dto.TransferRequestDto;
-import nip.edu.jobprep.repositories.AccountCacheService;
+import nip.edu.jobprep.utils.cache.AccountCacheScripts;
+import nip.edu.jobprep.utils.cache.LuaCache;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import nip.edu.jobprep.service.AccountService;
+import nip.edu.jobprep.service.TransferService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,23 +22,28 @@ import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Rollback AC: a failed transfer must not touch the cache and must not emit
- * invalidation for uncommitted state. PG remains unchanged, cache stays FRESH v0.
- */
+
 @Import(CacheRollbackSafetyIT.KafkaConfig.class)
 @TestPropertySource(properties = "spring.datasource.hikari.maximum-pool-size=10")
 class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
 
     @Autowired
-    nip.edu.jobprep.service.TransferService transferService;
+    TransferService transferService;
 
     @Autowired
-    AccountCacheService cache;
+    CacheManager cacheManager;
+
+    Cache cache;
+
+    @BeforeEach
+    void initCache() {
+        cache = cacheManager.getCache(LuaCache.NAME);
+    }
 
     @Autowired
     AccountService accountService;
@@ -83,12 +91,12 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
         // Warm cache from both accounts
         accountService.get(1);
         accountService.get(2);
-        assertThat(cache.field(1, "state")).isEqualTo("F");
-        assertThat(cache.field(2, "state")).isEqualTo("F");
+        assertThat(field(1, "state")).isEqualTo("F");
+        assertThat(field(2, "state")).isEqualTo("F");
 
         // Overspend triggers InsufficientFundsException -> rollback (nothing changed)
         assertThatThrownBy(() -> transferService.transfer(
-                java.util.UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 new TransferRequestDto(2L, 1L, 1L, new BigDecimal("500"))))
                 .isInstanceOf(nip.edu.jobprep.exceptions.InsufficientFundsException.class);
 
@@ -97,8 +105,12 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
                 .isEqualByComparingTo("100.00");
         assertThat(jdbc.queryForObject("select count(*) from outbox", Long.class)).isZero();
         // Cache still FRESH with pre-rollback values and no invalidation happened
-        assertThat(cache.field(1, "state")).isEqualTo("F");
-        assertThat(cache.field(1, "ver")).isEqualTo("0");
-        assertThat(cache.field(2, "state")).isEqualTo("F");
+        assertThat(field(1, "state")).isEqualTo("F");
+        assertThat(field(1, "ver")).isEqualTo("0");
+        assertThat(field(2, "state")).isEqualTo("F");
+    }
+
+    private Object field(long accountId, String name) {
+        return redis.opsForHash().get(AccountCacheScripts.key(accountId), name);
     }
 }

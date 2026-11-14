@@ -11,11 +11,11 @@ import java.util.UUID;
 
 @Service
 public class OutboxService {
-    private final OutboxRepository outboxRepository;
+    private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
     private final OutboxMetrics metrics;
 
-    public OutboxService(OutboxRepository outboxRepository, ObjectMapper objectMapper, OutboxMetrics metrics) {
+    public OutboxService(OutboxEventRepository outboxRepository, ObjectMapper objectMapper, OutboxMetrics metrics) {
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
         this.metrics = metrics;

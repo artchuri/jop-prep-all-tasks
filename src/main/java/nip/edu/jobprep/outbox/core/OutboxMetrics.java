@@ -1,6 +1,7 @@
 package nip.edu.jobprep.outbox.core;
 
 import io.micrometer.core.instrument.Counter;
+import nip.edu.jobprep.model.GlobalValues;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -11,8 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class OutboxMetrics {
-
-    private static final String UNKNOWN = "unknown";
 
     private final MeterRegistry registry;
     private final AtomicReference<Number> batchSize = new AtomicReference<>(0);
@@ -26,15 +25,18 @@ public class OutboxMetrics {
 
         Counter.builder("outbox_send_failures")
                 .description("Outbox Kafka send failures")
-                .tag("event_type", UNKNOWN)
-                .tag("error", UNKNOWN)
+                .tag("event_type", GlobalValues.METRIC_TAG_UNKNOWN)
+                .tag("error", GlobalValues.METRIC_TAG_UNKNOWN)
                 .register(registry);
         Counter.builder("outbox_events_rejected")
                 .description("Outbox events rejected after max attempts")
-                .tag("event_type", UNKNOWN)
+                .tag("event_type", GlobalValues.METRIC_TAG_UNKNOWN)
                 .register(registry);
         Counter.builder("outbox_retries")
                 .description("Outbox delivery retries")
+                .register(registry);
+        Counter.builder("outbox_recovered")
+                .description("Rejected rows returned to NEW by the reclaimer")
                 .register(registry);
         Counter.builder("outbox_lease_lost")
                 .description("Lease renewals lost to another owner")
@@ -42,7 +44,7 @@ public class OutboxMetrics {
 
         Timer.builder("outbox_delivery_seconds")
                 .description("Outbox event delivery duration")
-                .tag("event_type", UNKNOWN)
+                .tag("event_type", GlobalValues.METRIC_TAG_UNKNOWN)
                 .publishPercentileHistogram()
                 .register(registry);
     }
@@ -95,6 +97,12 @@ public class OutboxMetrics {
                 .increment();
     }
 
+    public void recovered(int rows) {
+        Counter.builder("outbox_recovered")
+                .register(registry)
+                .increment(rows);
+    }
+
     public void leaseLost() {
         Counter.builder("outbox_lease_lost")
                 .description("Lease renewals lost to another owner")
@@ -114,14 +122,14 @@ public class OutboxMetrics {
     }
 
     private static String tag(String eventType) {
-        return eventType == null || eventType.isBlank() ? UNKNOWN : eventType;
+        return eventType == null || eventType.isBlank() ? GlobalValues.METRIC_TAG_UNKNOWN : eventType;
     }
 
     private static String errorTag(Throwable error) {
         if (error == null) {
-            return UNKNOWN;
+            return GlobalValues.METRIC_TAG_UNKNOWN;
         }
         String name = error.getClass().getSimpleName();
-        return name.isBlank() ? UNKNOWN : name;
+        return name.isBlank() ? GlobalValues.METRIC_TAG_UNKNOWN : name;
     }
 }

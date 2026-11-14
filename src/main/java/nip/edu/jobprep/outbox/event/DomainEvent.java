@@ -1,11 +1,13 @@
 package nip.edu.jobprep.outbox.event;
 
 
+import java.time.Instant;
+
 public record DomainEvent(
         String eventId,
         String eventType,
         long userId,
-        java.time.Instant occurredAt,
+        Instant occurredAt,
         Object payload
 ) {
     public static final String TRANSFER_COMPLETED = "TRANSFER_COMPLETED";

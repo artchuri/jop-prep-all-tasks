@@ -1,23 +1,20 @@
-package nip.edu.jobprep.repositories;
+package nip.edu.jobprep.utils.cache;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import nip.edu.jobprep.config.AccountCacheProperties;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 
-@Service
-public class AccountCacheService {
 
-    static final long LEASE_MS = 3000;
-    static final long MARGIN_MS = 1000;
-    static final long STALE_MS = 5000;
-    static final long TTL_MS = 60000;
+@Component
+public class AccountCacheScripts {
 
     @SuppressWarnings("rawtypes")
     private static final DefaultRedisScript<List> READ_SCRIPT = script("redis/account_cache_read.lua");
@@ -38,10 +35,12 @@ public class AccountCacheService {
 
     private final StringRedisTemplate redis;
     private final MeterRegistry meters;
+    private final AccountCacheProperties properties;
 
-    public AccountCacheService(StringRedisTemplate redis, MeterRegistry meters) {
+    public AccountCacheScripts(StringRedisTemplate redis, MeterRegistry meters, AccountCacheProperties properties) {
         this.redis = redis;
         this.meters = meters;
+        this.properties = properties;
     }
 
     public static String key(long accountId) {
@@ -52,11 +51,15 @@ public class AccountCacheService {
         String token = UUID.randomUUID().toString();
         long start = System.nanoTime();
         List<String> r;
+        boolean readFailed = false;
         try {
             r = raw(redis.execute(READ_SCRIPT, List.of(key(accountId)),
-                    String.valueOf(LEASE_MS), token, String.valueOf(MARGIN_MS)));
+                    String.valueOf(properties.leaseMs()), token, String.valueOf(properties.marginMs())));
+        } catch (RuntimeException e) {
+            readFailed = true;
+            throw e;
         } finally {
-            meters.timer("cache_redis_latency_seconds", "op", "read")
+            meters.timer("cache_redis_latency_seconds", "op", "read", "outcome", readFailed ? "error" : "success")
                     .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
         }
         ReadResult result = ReadResult.of(r, token);
@@ -70,18 +73,23 @@ public class AccountCacheService {
     }
 
     public void fill(long accountId, String token, long version, String balance, String status) {
-        long ttl = 51000 + ThreadLocalRandom.current().nextLong(18001); // 51..69 s
+        long ttl = properties.ttlMs() + ThreadLocalRandom.current().nextLong(-properties.ttlJitterMs(), properties.ttlJitterMs() + 1);
+        if (ttl < 1) ttl = 1;
         raw(redis.execute(FILL_SCRIPT, List.of(key(accountId)),
                 token, String.valueOf(version), balance, status, String.valueOf(ttl)));
     }
 
     public void invalidate(long accountId, long newVersion) {
         long start = System.nanoTime();
+        boolean invalidateFailed = false;
         try {
             raw(redis.execute(INVALIDATE_SCRIPT, List.of(key(accountId)),
-                    String.valueOf(newVersion), String.valueOf(STALE_MS)));
+                    String.valueOf(newVersion), String.valueOf(properties.staleMs())));
+        } catch (RuntimeException e) {
+            invalidateFailed = true;
+            throw e;
         } finally {
-            meters.timer("cache_redis_latency_seconds", "op", "invalidate")
+            meters.timer("cache_redis_latency_seconds", "op", "invalidate", "outcome", invalidateFailed ? "error" : "success")
                     .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
         }
     }

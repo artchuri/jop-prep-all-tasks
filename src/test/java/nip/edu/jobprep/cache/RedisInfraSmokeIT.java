@@ -1,5 +1,9 @@
 package nip.edu.jobprep.cache;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.Socket;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -13,10 +17,10 @@ class RedisInfraSmokeIT {
     @Test
     void redisReachableThroughProxyAndEvalTimeWorks() throws Exception {
         String[] hp = TestRedis.proxyAddress().split(":");
-        try (var socket = new java.net.Socket(hp[0], Integer.parseInt(hp[1]))) {
+        try (var socket = new Socket(hp[0], Integer.parseInt(hp[1]))) {
             socket.setSoTimeout(5000);
             var out = socket.getOutputStream();
-            var in = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
+            var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             out.write("*1\r\n$4\r\nPING\r\n".getBytes());
             assertThat(in.readLine()).isEqualTo("+PONG");
@@ -41,10 +45,10 @@ class RedisInfraSmokeIT {
         String[] hp = TestRedis.proxyAddress().split(":");
         var proxy = TestRedis.REDIS_PROXY;
 
-        try (var socket = new java.net.Socket(hp[0], Integer.parseInt(hp[1]))) {
+        try (var socket = new Socket(hp[0], Integer.parseInt(hp[1]))) {
             socket.setSoTimeout(5000);
             socket.getOutputStream().write("*1\r\n$4\r\nPING\r\n".getBytes());
-            assertThat(new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream())).readLine())
+            assertThat(new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine())
                     .isEqualTo("+PONG");
         }
 
@@ -53,7 +57,7 @@ class RedisInfraSmokeIT {
         await("connection refused while proxy cut")
                 .atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> assertThatThrownBy(() -> {
-                    try (var s = new java.net.Socket(hp[0], Integer.parseInt(hp[1]))) {
+                    try (var s = new Socket(hp[0], Integer.parseInt(hp[1]))) {
                         s.setSoTimeout(2000);
                         s.getOutputStream().write("*1\r\n$4\r\nPING\r\n".getBytes());
                         s.getInputStream().read();
@@ -65,10 +69,10 @@ class RedisInfraSmokeIT {
         await("connection restored after proxy uncut")
                 .atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> {
-                    try (var s = new java.net.Socket(hp[0], Integer.parseInt(hp[1]))) {
+                    try (var s = new Socket(hp[0], Integer.parseInt(hp[1]))) {
                         s.setSoTimeout(5000);
                         s.getOutputStream().write("*1\r\n$4\r\nPING\r\n".getBytes());
-                        assertThat(new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine())
+                        assertThat(new BufferedReader(new InputStreamReader(s.getInputStream())).readLine())
                                 .isEqualTo("+PONG");
                     }
                 });
