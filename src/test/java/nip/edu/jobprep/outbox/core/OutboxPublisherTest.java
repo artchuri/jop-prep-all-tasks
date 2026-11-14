@@ -3,6 +3,8 @@ package nip.edu.jobprep.outbox.core;
 import nip.edu.jobprep.outbox.event.DomainEvent;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import nip.edu.jobprep.model.GlobalValues;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -20,7 +22,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OutboxPublisherTest {
     @Mock
-    private OutboxRepository outboxRepository;
+    private OutboxDispatchRepository outboxRepository;
 
     @Mock
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -32,13 +34,14 @@ class OutboxPublisherTest {
         when(outboxRepository.claimBatch(anyInt(), anyString(), any())).thenReturn(List.of(row));
         when(outboxRepository.renewLease(eq(1L), eq(row.createdAt()), anyString(), any())).thenReturn(true);
         when(outboxRepository.hasOlderActiveForUser(7L, 1L)).thenReturn(false);
-        when(kafkaTemplate.send(eq(OutboxPublisher.TOPIC), eq("7"), anyString()))
+        when(kafkaTemplate.send(eq(GlobalValues.KAFKA_TOPIC), eq("7"), anyString()))
                 .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("Kafka unavailable")));
-        when(outboxRepository.recordFailure(eq(1L), eq(row.createdAt()), anyString(), eq(5), anyString(), any())).thenReturn(1);
+        when(outboxRepository.recordFailure(eq(1L), eq(row.createdAt()), anyString(), eq(5), anyString(), any(OutboxRetryPolicy.class))).thenReturn(1);
 
-        new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry())).poll();
+        new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
+                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults()).poll();
 
-        verify(outboxRepository).recordFailure(eq(1L), eq(row.createdAt()), anyString(), eq(5), anyString(), any());
+        verify(outboxRepository).recordFailure(eq(1L), eq(row.createdAt()), anyString(), eq(5), anyString(), any(OutboxRetryPolicy.class));
         verify(outboxRepository, never()).markAsCompleted(anyLong(), any(), anyString());
     }
     @Test
@@ -48,13 +51,14 @@ class OutboxPublisherTest {
         when(outboxRepository.claimBatch(anyInt(), anyString(), any())).thenReturn(List.of(row));
         when(outboxRepository.renewLease(anyLong(), any(), anyString(), any())).thenReturn(true);
         when(outboxRepository.hasOlderActiveForUser(7L, 2L)).thenReturn(false);
-        when(kafkaTemplate.send(eq(OutboxPublisher.TOPIC), eq("7"), anyString()))
+        when(kafkaTemplate.send(eq(GlobalValues.KAFKA_TOPIC), eq("7"), anyString()))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
-        new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry())).poll();
+        new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
+                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults()).poll();
 
         verify(outboxRepository).markAsCompleted(eq(2L), eq(row.createdAt()), anyString());
-        verify(outboxRepository, never()).recordFailure(anyLong(), any(), anyString(), anyInt(), anyString(), any());
+        verify(outboxRepository, never()).recordFailure(anyLong(), any(), anyString(), anyInt(), anyString(), any(OutboxRetryPolicy.class));
     }
 
     @Test
@@ -65,7 +69,8 @@ class OutboxPublisherTest {
         when(outboxRepository.renewLease(anyLong(), any(), anyString(), any())).thenReturn(true);
         when(outboxRepository.hasOlderActiveForUser(7L, 2L)).thenReturn(true);
 
-        new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry())).poll();
+        new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
+                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults()).poll();
 
         verifyNoInteractions(kafkaTemplate);
         verify(outboxRepository, never()).markAsCompleted(anyLong(), any(), anyString());

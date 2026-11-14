@@ -1,5 +1,6 @@
 package nip.edu.jobprep.outbox.core;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import nip.edu.jobprep.outbox.event.DomainEvent;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -9,6 +10,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import nip.edu.jobprep.model.GlobalValues;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.containers.KafkaContainer;
@@ -26,7 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OutboxPublisherIT extends AbstractIntegrationTest {
 
     @Autowired
-    OutboxRepository outboxRepository;
+    OutboxDispatchRepository outboxRepository;
+
+    @Autowired
+    OutboxEventRepository outboxEventRepository;
 
     static final KafkaContainer KAFKA = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
 
@@ -34,11 +40,12 @@ class OutboxPublisherIT extends AbstractIntegrationTest {
     void deliversCommittedEventAfterRestart() {
         KAFKA.start();
 
-        outboxRepository.save(new DomainEvent(UUID.randomUUID().toString(), DomainEvent.TRANSFER_COMPLETED, 1L, Instant.now(), null),
+        outboxEventRepository.save(new DomainEvent(UUID.randomUUID().toString(), DomainEvent.TRANSFER_COMPLETED, 1L, Instant.now(), null),
                 10L, "{\"amount\":\"100.00\",\"currency\":\"RUB\"}", Instant.now());
 
         OutboxPublisher publisher = new OutboxPublisher(outboxRepository, TestKafka.template(KAFKA.getBootstrapServers()), new ObjectMapper(),
-                new OutboxMetrics(new SimpleMeterRegistry()));
+                new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
+                CircuitBreakerRegistry.ofDefaults());
         publisher.poll();
 
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(Map.ofEntries(
@@ -47,7 +54,7 @@ class OutboxPublisherIT extends AbstractIntegrationTest {
                 Map.entry(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 Map.entry(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName()),
                 Map.entry(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())))) {
-            consumer.subscribe(List.of(OutboxPublisher.TOPIC));
+            consumer.subscribe(List.of(GlobalValues.KAFKA_TOPIC));
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(10));
             assertThat(records.count()).isEqualTo(1);
             ConsumerRecord<String, String> record = records.iterator().next();

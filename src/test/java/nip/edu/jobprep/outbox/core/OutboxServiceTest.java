@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class OutboxServiceTest {
     @Mock
-    private OutboxRepository outboxRepository;
+    private OutboxEventRepository outboxRepository;
 
     @Mock
     private ObjectMapper objectMapper;
