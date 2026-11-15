@@ -1,6 +1,8 @@
 package nip.edu.jobprep.utils.cache;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import nip.edu.jobprep.config.AccountCacheProperties;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -8,6 +10,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -33,6 +36,13 @@ public class AccountCacheScripts {
         return s;
     }
 
+    /** Eagerly created at startup so the dashboards show zeros instead of "no data". */
+    private final Map<String, Counter> requestCounters;
+    private final Timer readSuccess;
+    private final Timer readError;
+    private final Timer invalidateSuccess;
+    private final Timer invalidateError;
+
     private final StringRedisTemplate redis;
     private final MeterRegistry meters;
     private final AccountCacheProperties properties;
@@ -41,6 +51,36 @@ public class AccountCacheScripts {
         this.redis = redis;
         this.meters = meters;
         this.properties = properties;
+        this.requestCounters = Map.of(
+                "hit", requestCounter("hit"),
+                "stale", requestCounter("stale"),
+                "miss_lease", requestCounter("miss_lease"),
+                "wait", requestCounter("wait"));
+        this.readSuccess = redisTimer("read", "success");
+        this.readError = redisTimer("read", "error");
+        this.invalidateSuccess = redisTimer("invalidate", "success");
+        this.invalidateError = redisTimer("invalidate", "error");
+    }
+
+    private Counter requestCounter(String result) {
+        return Counter.builder("cache_requests_total")
+                .description("Account cache reads by outcome")
+                .tag("result", result)
+                .register(meters);
+    }
+
+    /**
+     * Percentile histogram is what makes histogram_quantile() work on the
+     * dashboards: without it Micrometer exposes only count/sum/max and every
+     * p50/p99 panel renders "no data".
+     */
+    private Timer redisTimer(String op, String outcome) {
+        return Timer.builder("cache_redis_latency_seconds")
+                .description("Redis call latency for cache operations")
+                .tag("op", op)
+                .tag("outcome", outcome)
+                .publishPercentileHistogram()
+                .register(meters);
     }
 
     public static String key(long accountId) {
@@ -59,11 +99,11 @@ public class AccountCacheScripts {
             readFailed = true;
             throw e;
         } finally {
-            meters.timer("cache_redis_latency_seconds", "op", "read", "outcome", readFailed ? "error" : "success")
+            (readFailed ? readError : readSuccess)
                     .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
         }
         ReadResult result = ReadResult.of(r, token);
-        meters.counter("cache_requests_total", "result", switch (result.status()) {
+        requestCounters.get(switch (result.status()) {
             case HIT -> "hit";
             case STALE -> "stale";
             case LEASE -> "miss_lease";
@@ -89,7 +129,7 @@ public class AccountCacheScripts {
             invalidateFailed = true;
             throw e;
         } finally {
-            meters.timer("cache_redis_latency_seconds", "op", "invalidate", "outcome", invalidateFailed ? "error" : "success")
+            (invalidateFailed ? invalidateError : invalidateSuccess)
                     .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
         }
     }

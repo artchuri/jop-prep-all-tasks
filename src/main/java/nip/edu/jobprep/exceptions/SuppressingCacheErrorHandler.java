@@ -6,15 +6,25 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 
+import java.util.List;
+
 
 public class SuppressingCacheErrorHandler implements CacheErrorHandler {
 
     private static final Logger log = LoggerFactory.getLogger(SuppressingCacheErrorHandler.class);
 
+    /** Operations we pre-register so the dashboard renders zeros, not "no data". */
+    private static final List<String> OPERATIONS = List.of("get", "put", "evict", "clear");
+
     private final MeterRegistry meters;
 
     public SuppressingCacheErrorHandler(MeterRegistry meters) {
         this.meters = meters;
+        // Eager registration keeps the "Invalidation errors" panel at zero
+        // instead of "no data" until the first Redis hiccup.
+        for (String operation : OPERATIONS) {
+            meters.counter("cache_errors_total", "operation", operation);
+        }
     }
 
     @Override

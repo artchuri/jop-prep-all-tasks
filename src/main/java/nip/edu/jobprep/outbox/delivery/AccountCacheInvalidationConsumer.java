@@ -15,6 +15,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.Map;
 
 
@@ -32,6 +33,12 @@ public class AccountCacheInvalidationConsumer {
         this.cacheManager = cacheManager;
         this.objectMapper = objectMapper;
         this.meters = meters;
+        // Eager registration: the Kafka-tier panels must render zeros before the
+        // first invalidation event ever arrives.
+        meters.counter("cache_invalidation_total", "tier", "kafka");
+        for (String reason : List.of("broken_payload", "malformed_payload", "no_cache")) {
+            meters.counter("cache_invalidation_errors_total", "tier", "kafka", "reason", reason);
+        }
     }
 
     @KafkaListener(topics = "#{T(nip.edu.jobprep.model.GlobalValues).KAFKA_TOPIC}", groupId = "account-cache-invalidation")
@@ -47,9 +54,7 @@ public class AccountCacheInvalidationConsumer {
         }
         String type = String.valueOf(envelope.get("eventType"));
 
-        // Extract target accounts/versions first: a malformed payload is permanent
-        // (ack, never retried), while Redis failures during invalidate are transient
-        // (propagated to the error handler -> retry with backoff, offset not committed).
+
         long[][] targets;
         try {
             Map<String, Object> payload = (Map<String, Object>) envelope.get("payload");

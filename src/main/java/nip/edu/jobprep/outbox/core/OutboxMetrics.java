@@ -42,6 +42,18 @@ public class OutboxMetrics {
                 .description("Lease renewals lost to another owner")
                 .register(registry);
 
+        // Dashboard panels (lost-event check / throughput) read these before the
+        // first event of a given type exists; registering them eagerly at zero
+        // avoids "no data" on a freshly started instance.
+        Counter.builder("outbox_events_new")
+                .description("Outbox events created")
+                .tag("event_type", GlobalValues.METRIC_TAG_UNKNOWN)
+                .register(registry);
+        Counter.builder("outbox_events_published")
+                .description("Outbox events published to Kafka")
+                .tag("event_type", GlobalValues.METRIC_TAG_UNKNOWN)
+                .register(registry);
+
         Timer.builder("outbox_delivery_seconds")
                 .description("Outbox event delivery duration")
                 .tag("event_type", GlobalValues.METRIC_TAG_UNKNOWN)

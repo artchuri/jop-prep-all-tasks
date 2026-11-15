@@ -23,6 +23,10 @@ public class LuaCache implements Cache {
         this.scripts = scripts;
         this.meters = meters;
         this.properties = properties;
+        // Eager registration: dashboards must render zeros, not "no data",
+        // before the first eviction ever happens.
+        meters.counter("cache_evict_total", "result", "success");
+        meters.counter("cache_evict_total", "result", "error");
     }
 
     @Override

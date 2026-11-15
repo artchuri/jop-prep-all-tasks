@@ -80,7 +80,7 @@ resilience4j:
 management:
   health:
     redis:
-      enabled: false
+      enabled: true
   endpoints:
     web:
       exposure:

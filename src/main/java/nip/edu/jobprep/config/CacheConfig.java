@@ -11,6 +11,8 @@ import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+
 
 @Configuration
 @EnableCaching
@@ -21,6 +23,12 @@ public class CacheConfig implements CachingConfigurer {
 
     public CacheConfig(MeterRegistry meters) {
         this.meters = meters;
+        // The CacheErrorHandler is only instantiated on the first cache failure,
+        // so its counters never exist on a healthy instance and the dashboard
+        // shows "no data". Register them here, at context startup, instead.
+        for (String operation : List.of("get", "put", "evict", "clear")) {
+            meters.counter("cache_errors_total", "operation", operation);
+        }
     }
 
     @Bean

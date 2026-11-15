@@ -54,7 +54,7 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Invalidations (inline / kafka)",
+      "title": "Invalidations: inline vs kafka",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -63,12 +63,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(cache_evict_total{result=\"success\"}[5m]))",
-          "legendFormat": "inline"
+          "expr": "sum(rate(cache_evict_total{result=\"success\"}[5m])) or vector(0)",
+          "legendFormat": "inline (afterCommit)"
         },
         {
-          "expr": "sum(rate(cache_invalidation_total{tier=\"kafka\"}[5m]))",
-          "legendFormat": "kafka"
+          "expr": "sum(rate(cache_invalidation_total{tier=\"kafka\"}[5m])) or vector(0)",
+          "legendFormat": "kafka (tier 2)"
         }
       ],
       "fieldConfig": {
@@ -90,12 +90,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, op, outcome) (rate(cache_redis_latency_seconds_bucket[5m])))",
-          "legendFormat": "p50 {{op}}"
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(cache_redis_latency_seconds_bucket{outcome=\"success\"}[5m])))",
+          "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (le, op, outcome) (rate(cache_redis_latency_seconds_bucket[5m])))",
-          "legendFormat": "p99 {{op}}"
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(cache_redis_latency_seconds_bucket{outcome=\"success\"}[5m])))",
+          "legendFormat": "p99"
         }
       ],
       "fieldConfig": {
