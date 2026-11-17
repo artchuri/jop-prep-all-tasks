@@ -59,11 +59,9 @@ spring:
 account-cache:
   ttl-ms: 60000
   ttl-jitter-ms: 9000
-  lease-ms: 3000
-  margin-ms: 1000
+  lease-ms: 800
+  margin-ms: 400
   stale-ms: 5000
-  wait-attempts: 3
-  wait-pause-ms: 20
 
 
 resilience4j:

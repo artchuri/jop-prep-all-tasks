@@ -1,5 +1,6 @@
 package nip.edu.jobprep.cache;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.model.GlobalValues;
 import nip.edu.jobprep.outbox.delivery.AccountCacheInvalidationConsumer;
@@ -30,7 +31,15 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,6 +53,9 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
 
     @Autowired
     CacheManager cacheManager;
+
+    @Autowired
+    MeterRegistry meters;
 
     Cache cache;
 
@@ -194,15 +206,66 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
     }
 
     @Test
-    void leaseGuardsConcurrentMiss_singlePgFill() throws Exception {
+    void missTakesLeaseThenFillLandsUnderToken() throws Exception {
         redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
-        // First reader takes the lease and fills; a parallel WAIT-reader resolves to the filled value.
-        // First reader goes through the facade: takes the lease, loads from PG, fills under the token.
+        // Sequential lease handoff: the first reader takes the lease, loads from
+        // PG and fills under the token. (Real concurrency lives in
+        // realConcurrentMissCollapsesIntoSinglePgFill below.)
         AccountResponseDto first = accountService.get(1);
         assertThat(first.version()).isEqualTo(0L);
         assertThat(field(1, "state")).isEqualTo("F");
         // A direct low-level read now returns a filled value (HIT), proving lease handoff works.
         assertThat(field(1, "bal")).isEqualTo("100.00");
+    }
+
+    /**
+     * True concurrent cold miss: 8 readers released at once on an empty key
+     * must collapse into a single PostgreSQL fill. Overlap is proven by the
+     * wait counter - a sequential run cannot produce 7 WAIT outcomes, because
+     * WAIT requires another reader's live lease at the moment of the read.
+     */
+    @Test
+    void realConcurrentMissCollapsesIntoSinglePgFill() throws Exception {
+        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
+        double waitBefore = waitCounter();
+        AtomicInteger dbCalls = new AtomicInteger();
+        Callable<AccountResponseDto> loader = () -> {
+            if (dbCalls.incrementAndGet() == 1) {
+                Thread.sleep(400); // hold the lease so late readers must WAIT
+            }
+            return new AccountResponseDto(1L, new BigDecimal("100.00"), "ACTIVE", 0L);
+        };
+
+        int readers = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(readers);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<AccountResponseDto>> results = new ArrayList<>();
+        for (int i = 0; i < readers; i++) {
+            results.add(pool.submit(() -> {
+                start.await();
+                return cache.get(1L, loader);
+            }));
+        }
+        start.countDown();
+        for (Future<AccountResponseDto> f : results) {
+            assertThat(f.get(10, TimeUnit.SECONDS)).isNotNull();
+        }
+        pool.shutdown();
+
+        // The stampede collapsed: one PostgreSQL fill for eight simultaneous readers.
+        assertThat(dbCalls.get()).isEqualTo(1);
+        // Overlap proven: exactly the 7 non-leader readers observed a live
+        // foreign lease (WAIT); sequential execution yields 0.
+        assertThat(waitCounter() - waitBefore).isEqualTo(7.0);
+        // The fill landed, so the next reader is served from Redis, not PG.
+        int before = dbCalls.get();
+        assertThat(cache.get(1L, loader)).isNotNull();
+        assertThat(dbCalls.get()).isEqualTo(before);
+        assertThat(field(1, "state")).isEqualTo("F");
+    }
+
+    private double waitCounter() {
+        return meters.counter("cache_requests_total", "result", "wait").count();
     }
 
     @Test

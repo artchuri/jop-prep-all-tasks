@@ -6,7 +6,7 @@ import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
 
 
-final class TestRedis {
+public final class TestRedis {
 
     static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
     static final DockerImageName TOXIPROXY_IMAGE = DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.12.0");
@@ -21,7 +21,7 @@ final class TestRedis {
     static final ToxiproxyContainer TOXIPROXY = new ToxiproxyContainer(TOXIPROXY_IMAGE)
             .withNetwork(NETWORK);
 
-    static final ToxiproxyContainer.ContainerProxy REDIS_PROXY;
+    public static final ToxiproxyContainer.ContainerProxy REDIS_PROXY;
 
     static {
         REDIS.start();

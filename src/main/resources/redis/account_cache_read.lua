@@ -19,7 +19,7 @@ if m['tok'] and m['tok'] ~= '' and tonumber(m['lexp'] or 0) > now then
     if m['state'] == 'S' and tonumber(m['sdl'] or 0) > now then
         return {'STALE', m['bal'] or '', m['st'] or '', m['ver'] or ''}
     end
-    return {'WAIT', ''}
+    return {'WAIT', tostring(math.max(m['lexp'] - now, 0))}
 end
 redis.call('HSET', k, 'tok', token, 'lexp', now + leaseMs)
 local pttl = redis.call('PTTL', k)

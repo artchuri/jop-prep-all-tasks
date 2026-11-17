@@ -36,7 +36,6 @@ public class AccountCacheScripts {
         return s;
     }
 
-    /** Eagerly created at startup so the dashboards show zeros instead of "no data". */
     private final Map<String, Counter> requestCounters;
     private final Timer readSuccess;
     private final Timer readError;
@@ -69,11 +68,6 @@ public class AccountCacheScripts {
                 .register(meters);
     }
 
-    /**
-     * Percentile histogram is what makes histogram_quantile() work on the
-     * dashboards: without it Micrometer exposes only count/sum/max and every
-     * p50/p99 panel renders "no data".
-     */
     private Timer redisTimer(String op, String outcome) {
         return Timer.builder("cache_redis_latency_seconds")
                 .description("Redis call latency for cache operations")
@@ -113,18 +107,34 @@ public class AccountCacheScripts {
     }
 
     public void fill(long accountId, String token, long version, String balance, String status) {
+        fillRaw(accountId, token, version, balance, status);
+    }
+
+    /** Raw fill result for tests and diagnostics: REJECTED statuses are returned, not swallowed. */
+    public ReadResult fillRaw(long accountId, String token, long version, String balance, String status) {
+        List<String> out = raw(redis.execute(FILL_SCRIPT, List.of(key(accountId)),
+                token, String.valueOf(version), balance, status, String.valueOf(ttlWithJitter())));
+        return ReadResult.of(out, token);
+    }
+
+    private long ttlWithJitter() {
         long ttl = properties.ttlMs() + ThreadLocalRandom.current().nextLong(-properties.ttlJitterMs(), properties.ttlJitterMs() + 1);
-        if (ttl < 1) ttl = 1;
-        raw(redis.execute(FILL_SCRIPT, List.of(key(accountId)),
-                token, String.valueOf(version), balance, status, String.valueOf(ttl)));
+        return ttl < 1 ? 1 : ttl;
     }
 
     public void invalidate(long accountId, long newVersion) {
+        invalidateRaw(accountId, newVersion);
+    }
+
+    /** Raw invalidate result for tests and diagnostics: NOOP / VOIDED / TOMBSTONED. */
+    public String invalidateRaw(long accountId, long newVersion) {
         long start = System.nanoTime();
         boolean invalidateFailed = false;
         try {
-            raw(redis.execute(INVALIDATE_SCRIPT, List.of(key(accountId)),
-                    String.valueOf(newVersion), String.valueOf(properties.staleMs())));
+            List<String> out = raw(redis.execute(INVALIDATE_SCRIPT, List.of(key(accountId)),
+                    String.valueOf(newVersion), String.valueOf(properties.staleMs()),
+                    String.valueOf(properties.leaseMs()), String.valueOf(properties.marginMs())));
+            return out.get(0);
         } catch (RuntimeException e) {
             invalidateFailed = true;
             throw e;
@@ -145,13 +155,21 @@ public class AccountCacheScripts {
 
     public enum Status { HIT, STALE, LEASE, WAIT }
 
-    public record ReadResult(Status status, String token, String balance, String statusName, long version) {
+    public record ReadResult(Status status, String token, String balance, String statusName, long version, long waitRemainingMs) {
         static ReadResult of(List<String> r, String token) {
             Status s = Status.valueOf(r.get(0));
             if (s == Status.HIT || s == Status.STALE) {
-                return new ReadResult(s, token, r.get(1), r.get(2), Long.parseLong(r.get(3)));
+                return new ReadResult(s, token, r.get(1), r.get(2), Long.parseLong(r.get(3)), 0);
             }
-            return new ReadResult(s, token, null, null, 0);
+            if (s == Status.WAIT) {
+                long remaining = 0;
+                try {
+                    remaining = Math.max(Long.parseLong(r.get(1)), 0);
+                } catch (RuntimeException ignored) {
+                }
+                return new ReadResult(s, token, null, null, 0, remaining);
+            }
+            return new ReadResult(s, token, null, null, 0, 0);
         }
     }
 
