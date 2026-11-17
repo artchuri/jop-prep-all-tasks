@@ -10,6 +10,7 @@ import nip.edu.jobprep.exceptions.AccountStatusConflictException;
 import nip.edu.jobprep.exceptions.InsufficientFundsException;
 import nip.edu.jobprep.exceptions.InvalidTransferException;
 import nip.edu.jobprep.exceptions.TransferForbiddenException;
+import nip.edu.jobprep.utils.mapper.TransferResponseMapper;
 import nip.edu.jobprep.repositories.AccountRepository;
 import nip.edu.jobprep.repositories.TransferRepository;
 import nip.edu.jobprep.service.TransferServiceImpl;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.OngoingStubbing;
 
@@ -50,7 +52,13 @@ class TransferServiceImplTest {
     private TransferRepository transferRepository;
 
     @Mock
-    private nip.edu.jobprep.outbox.OutboxService outboxService;
+    private nip.edu.jobprep.outbox.core.OutboxService outboxService;
+
+    @Spy
+    private TransferResponseMapper responseMapper = new TransferResponseMapper();
+
+    @Mock
+    private nip.edu.jobprep.utils.cache.CacheEvictAfterCommit cacheEvict;
 
     @Test
     void shouldTransferSuccessfully_whenAccountsAreActive() {

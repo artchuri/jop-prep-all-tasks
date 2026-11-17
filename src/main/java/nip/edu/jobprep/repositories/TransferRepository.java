@@ -1,6 +1,7 @@
 package nip.edu.jobprep.repositories;
 
 import nip.edu.jobprep.entity.TransferHistory;
+import nip.edu.jobprep.utils.mapper.TransferRowMapper;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -30,7 +31,7 @@ public class TransferRepository {
         Record record = dsl.select().from(table("transfers_history"))
                 .where(field("idempotency_key").eq(idempotencyKey))
                 .fetchOne();
-        return Optional.ofNullable(record).map(this::map);
+        return Optional.ofNullable(record).map(TransferRowMapper::map);
     }
 
     public TransferHistory insertIfAbsent(long fromAccountId, long recipientAccountId, BigDecimal amount,
@@ -46,19 +47,6 @@ public class TransferRepository {
                 .onConflict(field("idempotency_key"))
                 .doNothing()
                 .returning(TRANSFER_FIELDS).fetchOne();
-        return record == null ? null : map(record);
-    }
-
-    private TransferHistory map(Record record) {
-        return TransferHistory.builder()
-                .id(record.get(field("id", Long.class)))
-                .recipientAccountId(record.get(field("recipient_account_id", Long.class)))
-                .fromAccountId(record.get(field("from_account_id", Long.class)))
-                .amount(record.get(field("amount", BigDecimal.class)))
-                .createdAt(record.get(field("created_at"), Instant.class))
-                .status(record.get(field("status", String.class)))
-                .idempotencyKey(record.get(field("idempotency_key", String.class)))
-                .currency(record.get(field("currency", String.class)))
-                .build();
+        return record == null ? null : TransferRowMapper.map(record);
     }
 }

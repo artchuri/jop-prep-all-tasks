@@ -8,8 +8,23 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
   jooq:
     sql-dialect: POSTGRES
+  cloud:
+    discovery:
+      enabled: false
+eureka:
+  client:
+    enabled: false
+  # Test containers do not provide MongoDB; JobRunr's storage autoconfiguration
+  # would otherwise abort the whole test context (it demands a uuidRepresentation).
+  autoconfigure:
+    exclude:
+      # Test containers provide only PostgreSQL/Redis/Kafka; everything else below
+      # needs external infrastructure (MongoDB, S3, Eureka, Elasticsearch) or a
+      # configured cloud account, and aborts the whole test context otherwise.
+      - org.jobrunr.spring.autoconfigure.storage.JobRunrMongoDBStorageAutoConfiguration
+      - org.springframework.ai.vectorstore.s3.autoconfigure.S3VectorStoreAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
 
 outbox:
   publisher:
     enabled: true
-

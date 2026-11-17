@@ -2,11 +2,18 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
+  # Both app instances live in the compose network: scrape them by service DNS
+  # names on the in-container port (8080), not by published host ports.
   - job_name: job-prep
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ["host.docker.internal:8080"]
+      - targets: ["app-a:8080", "app-b:8080"]
 
   - job_name: postgres-exporter
     static_configs:
       - targets: ["postgres-exporter:9187"]
+
+  # Redis server metrics (memory, hit ratio, connections) for the Redis dashboard.
+  - job_name: redis-exporter
+    static_configs:
+      - targets: ["redis-exporter:9121"]

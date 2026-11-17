@@ -2,7 +2,7 @@ package nip.edu.jobprep.repositories;
 
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
-import nip.edu.jobprep.entity.User;
+import nip.edu.jobprep.utils.mapper.AccountRowMapper;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -31,7 +31,7 @@ public class AccountRepository {
     public Optional<Account> findByIdForUpdate(long id) {
         Record record = dsl.select().from(table("accounts"))
                 .where(field("id").eq(id)).forUpdate().fetchOne();
-        return Optional.ofNullable(record).map(this::map);
+        return Optional.ofNullable(record).map(AccountRowMapper::map);
     }
 
     public Account updateStatus(long id, long expectedVersion, AccountStatus status, Instant changedAt) {
@@ -43,7 +43,13 @@ public class AccountRepository {
                 .where(field("id").eq(id).and(field("version").eq(expectedVersion)))
                 .returning(ACCOUNT_FIELDS).fetchOne();
         assert record != null;
-        return map(record);
+        return AccountRowMapper.map(record);
+    }
+
+    public Optional<Account> findById(long id) {
+        Record record = dsl.select().from(table("accounts"))
+                .where(field("id").eq(id)).fetchOne();
+        return Optional.ofNullable(record).map(AccountRowMapper::map);
     }
 
     public void updateAmount(long id, long expectedVersion, BigDecimal amount, Instant updatedAt) {
@@ -54,24 +60,6 @@ public class AccountRepository {
                 .where(field("id").eq(id).and(field("version").eq(expectedVersion)))
                 .returning(ACCOUNT_FIELDS).fetchOne();
         assert record != null;
-        map(record);
-    }
-
-    private Account map(Record record) {
-        User user = User.builder()
-                .id(record.get(field("user_id", Long.class)))
-                .build();
-
-        return Account.builder()
-                .id(record.get(field("id", Long.class)))
-                .user(user)
-                .status(AccountStatus.valueOf(record.get(field("status", String.class))))
-                .createdAt(record.get(field("created_at"), Instant.class))
-                .updatedAt(record.get(field("updated_at"), Instant.class))
-                .statusChangedAt(record.get(field("status_changed_at"), Instant.class))
-                .version(record.get(field("version", Long.class)))
-                .amount(record.get(field("amount", BigDecimal.class)))
-                .currency(record.get(field("currency", String.class)))
-                .build();
+        AccountRowMapper.map(record);
     }
 }

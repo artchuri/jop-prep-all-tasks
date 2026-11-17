@@ -1,0 +1,196 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Cache hit ratio",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_requests_total{result=\"hit\"}[5m])) / clamp_min(sum(rate(cache_requests_total[5m])), 0.000001)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Cache reads by result",
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(cache_requests_total[1m]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Invalidations: inline vs kafka",
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 15,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_evict_total{result=\"success\"}[5m])) or vector(0)",
+          "legendFormat": "inline (afterCommit)"
+        },
+        {
+          "expr": "sum(rate(cache_invalidation_total{tier=\"kafka\"}[5m])) or vector(0)",
+          "legendFormat": "kafka (tier 2)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Redis latency p50/p99 (read, invalidate)",
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(cache_redis_latency_seconds_bucket{outcome=\"success\"}[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(cache_redis_latency_seconds_bucket{outcome=\"success\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Invalidation errors",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 9,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (operation) (rate(cache_errors_total[5m]))",
+          "legendFormat": "{{tier}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Outbox publisher: published / pending / rejected",
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 15,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(outbox_events_published_total[1m]))",
+          "legendFormat": "published"
+        },
+        {
+          "expr": "outbox_pending{status=\"NEW\"}",
+          "legendFormat": "pending NEW"
+        },
+        {
+          "expr": "sum(rate(outbox_events_rejected_total[1m]))",
+          "legendFormat": "rejected"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "HTTP GET /v1/account/{id} (rate + p99)",
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=\"/v1/account/{id}\",method=\"GET\"}[1m]))",
+          "legendFormat": "rate"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{uri=\"/v1/account/{id}\",method=\"GET\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "title": "Account Cache (ACC-10x)",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  }
+}

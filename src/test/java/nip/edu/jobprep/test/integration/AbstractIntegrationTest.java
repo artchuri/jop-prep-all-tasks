@@ -26,7 +26,11 @@ public abstract class AbstractIntegrationTest {
             TestPropertyValues.of(
                     "spring.datasource.url=" + POSTGRES.getJdbcUrl(),
                     "spring.datasource.username=" + POSTGRES.getUsername(),
-                    "spring.datasource.password=" + POSTGRES.getPassword()
+                    "spring.datasource.password=" + POSTGRES.getPassword(),
+                    // Test containers provide only PostgreSQL/Redis/Kafka; these starters
+                    // need external infrastructure and would abort the whole context.
+                    "spring.autoconfigure.exclude=org.jobrunr.spring.autoconfigure.storage.JobRunrMongoDBStorageAutoConfiguration," +
+                            "org.springframework.ai.vectorstore.s3.autoconfigure.S3VectorStoreAutoConfiguration"
             ).applyTo(context.getEnvironment());
         }
     }

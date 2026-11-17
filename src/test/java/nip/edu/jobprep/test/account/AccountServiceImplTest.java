@@ -5,9 +5,9 @@ import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
 import nip.edu.jobprep.entity.User;
 import nip.edu.jobprep.exceptions.AccountStatusConflictException;
+import nip.edu.jobprep.utils.mapper.AccountResponseMapper;
 import nip.edu.jobprep.repositories.AccountHistoryRepository;
 import nip.edu.jobprep.repositories.AccountRepository;
-import nip.edu.jobprep.repositories.UserRepository;
 import nip.edu.jobprep.service.AccountServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
@@ -39,10 +40,13 @@ public class AccountServiceImplTest {
     private AccountHistoryRepository historyRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private nip.edu.jobprep.outbox.core.OutboxService outboxService;
+
+    @Spy
+    private AccountResponseMapper responseMapper = new AccountResponseMapper();
 
     @Mock
-    private nip.edu.jobprep.outbox.OutboxService outboxService;
+    private nip.edu.jobprep.utils.cache.CacheEvictAfterCommit cacheEvict;
 
     @Captor
     private ArgumentCaptor<Instant> changedAtCaptor;

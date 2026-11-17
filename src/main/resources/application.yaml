@@ -1,18 +1,43 @@
 spring:
   application:
     name: job-prep
+
   datasource:
     url: jdbc:postgresql://localhost:5432/job_prep
     username: admin
     password: admin
     driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 250
+      minimum-idle: 10
+      connection-timeout: 3000
+      pool-name: job-prep-pg-pool
+
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
+
   jooq:
     sql-dialect: POSTGRES
+
+  data:
+    redis:
+      client-type: jedis
+      host: localhost
+      port: 6379
+      timeout: 100ms
+      connect-timeout: 500ms
+      jedis:
+        pool:
+          enabled: true
+          max-active: 64
+          max-idle: 16
+          min-idle: 4
+          max-wait: 100ms
+
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -22,7 +47,38 @@ spring:
         max.in.flight.requests.per.connection: 2
         delivery.timeout.ms: 120000
         request.timeout.ms: 30000
+    consumer:
+      group-id: account-cache-invalidation
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual
+
+
+account-cache:
+  ttl-ms: 60000
+  ttl-jitter-ms: 9000
+  lease-ms: 800
+  margin-ms: 400
+  stale-ms: 5000
+
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      outbox-kafka:
+        failure-rate-threshold: 50
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 1
+        automatic-transition-from-open-to-half-open-enabled: true
+
 management:
+  health:
+    redis:
+      enabled: true
   endpoints:
     web:
       exposure:
