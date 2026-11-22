@@ -80,13 +80,15 @@ public final class RateLimitFilter extends OncePerRequestFilter {
             reservation = rateLimiter.reserve(client, endpoint, limit, nowMs);
         } catch (RateLimitOutageException e) {
             metrics.outage(client.name());
-            if ("allow".equals(properties.outageStrategy())) {
-                chain.doFilter(request, response);
-                return;
+            switch (properties.outageStrategy()) {
+                case "allow" -> {
+                    chain.doFilter(request, response);
+                    return;
+                }
+                default -> problem(response, 503, "service unavailable",
+                        "rate limiter is temporarily unavailable, retry", "RATE_LIMITER_UNAVAILABLE",
+                        properties.outageRetryAfterSeconds());
             }
-            problem(response, 503, "service unavailable",
-                    "rate limiter is temporarily unavailable, retry", "RATE_LIMITER_UNAVAILABLE",
-                    properties.outageRetryAfterSeconds());
             return;
         }
         if (!reservation.allowed()) {
@@ -100,14 +102,13 @@ public final class RateLimitFilter extends OncePerRequestFilter {
         metrics.reservationStarted();
         try {
             chain.doFilter(request, response);
-            int status = response.getStatus();
-            if (status >= 400 && status != 404 && status != 405) {
-                rateLimiter.refund(reservation);
-                metrics.refunded(client.name(), endpoint.id());
-            } else if (status < 400) {
-                metrics.accepted(client.name(), endpoint.id());
-            } else {
-                metrics.counted(client.name(), endpoint.id());
+            switch (SlotOutcome.of(response.getStatus())) {
+                case ACCEPTED -> metrics.accepted(client.name(), endpoint.id());
+                case COUNTED -> metrics.counted(client.name(), endpoint.id());
+                case REFUNDED -> {
+                    rateLimiter.refund(reservation);
+                    metrics.refunded(client.name(), endpoint.id());
+                }
             }
         } catch (ServletException | IOException | RuntimeException e) {
             rateLimiter.refund(reservation);

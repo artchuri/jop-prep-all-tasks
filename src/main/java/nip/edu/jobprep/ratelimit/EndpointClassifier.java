@@ -29,17 +29,17 @@ public final class EndpointClassifier {
 
     public Endpoint classify(String method, String pathWithinApplication) {
         String m = method.toUpperCase(Locale.ROOT);
+        PathContainer path = PathContainer.parsePath(pathWithinApplication);
+        Endpoint methodMismatch = null;
         for (Rule r : rules) {
-            if (r.pattern().matches(PathContainer.parsePath(pathWithinApplication))
-                    && r.method().equals(m)) {
+            if (!r.pattern().matches(path)) {
+                continue;
+            }
+            if (r.method().equals(m)) {
                 return r.endpoint();
             }
+            methodMismatch = r.endpoint();
         }
-        for (Rule r : rules) {
-            if (r.pattern().matches(PathContainer.parsePath(pathWithinApplication))) {
-                return r.endpoint();
-            }
-        }
-        return fallback;
+        return methodMismatch != null ? methodMismatch : fallback;
     }
 }
