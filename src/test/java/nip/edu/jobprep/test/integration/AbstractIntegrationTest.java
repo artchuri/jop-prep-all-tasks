@@ -14,7 +14,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @ContextConfiguration(initializers = AbstractIntegrationTest.Initializer.class)
 public abstract class AbstractIntegrationTest {
 
-    public static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    public static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
+            .withCommand("postgres", "-c", "max_connections=300", "-c", "shared_buffers=128MB");
 
     static {
         POSTGRES.start();

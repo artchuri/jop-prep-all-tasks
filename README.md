@@ -75,3 +75,5 @@ deployment decision, not a code constant:
 Both instances must agree on these values: a mismatch would give them different
 staleness bounds against the same Redis. Changing the TTL is a compose edit plus a
 restart - no rebuild.
+
+- ACC-107: распределённый rate limiter (Redis Lua, reserve-then-refund, dedicated pool). см. docs/observability.md#rate-limiting-acc-107

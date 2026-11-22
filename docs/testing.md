@@ -4,7 +4,7 @@
 
 | Уровень | Запуск | Инфраструктура |
 |---|---|---|
-| Unit (`*Test.java`) | `./mvnw test` | Mockito/подставы, без контейнеров — 22 теста |
+| Unit (`*Test.java`) | `./mvnw test` | Mockito/подставы, без контейнеров — 61 тест |
 | Integration (`*IT.java`) | `./mvnw failsafe:integration-test failsafe:verify` | Testcontainers (PostgreSQL, Redis, Kafka), реальный Spring-контекст |
 
 Соло-прогон одного IT:
@@ -30,12 +30,20 @@
 | `migration/OutboxMigrationIT` | Миграция default-партиции: строки переезжают, default возвращается |
 | `test/transfer/TransferServiceImplConcurrencyIT` | Конкурентные переводы: суммарный баланс сохраняется (row locks) |
 | `JobPrepApplicationIT` | Приложение стартует целиком в интеграционном окружении |
+| `ratelimit/RateLimitSaturationIT` | I1–I3 на ужатых лимитах (get-account 3/min): ниже лимита все 2XX; сверх — 429 + `Retry-After` + счётчик `rejected`; насыщенный бакет не трогает соседние эндпоинты (I3) |
+| `ratelimit/RateLimitOutageProxyIT` | I7 через toxiproxy: Redis отрезан → 503 `RATE_LIMITER_UNAVAILABLE` + `Retry-After` + счётчик outage; восстановление связи → снова 2XX; счётчики outage зарегистрированы на старте (zero вместо no data) |
+| `ratelimit/RateLimitTwoInstancesIT` | I5: лимит глобальный — два полных инстанса (два Spring-контекста, порты 18081/18082) выедают одно окно в Redis; после исчерпания на A, B отвечает 429 |
+| `ratelimit/LuaReserveRefundLogicIT` | Ядро алгоритма на живом Redis: reserve/refund по дизайн-доку Q3/Q6/Q12, время подаётся аргументом (без sleep) |
+
+Остальная матрица НФТ — **I4** (изменение лимита через рестарт, не hot-reload) и **I6** (allow-стратегия при outage) — по согласованию вынесена в ACC-107g; в этом мерже их поведение зафиксировано конфигом и кодом, автотестов нет.
 
 ## Юнит-тесты, которые держат контракты
 
 - `CacheEvictAfterCommitTest` — evict строго после commit, при rollback — нет; ошибка Redis не роняет операцию;
 - `OutboxPublisherTest` — claim/mark/failure-переходы publisher'а;
-- `OutboxServiceTest`, `AccountServiceImplTest`, `TransferServiceImplTest`, `AccountControllerTest` — доменные правила и API-контракты.
+- `OutboxServiceTest`, `AccountServiceImplTest`, `TransferServiceImplTest`, `AccountControllerTest` — доменные правила и API-контракты;
+- `ratelimit/PeakProfileEvaluatorMidWindowTest` — I8: множитель пика действует внутри окна, max при пересечении профилей, ровный откат на границе fire+duration (полуинтервал);
+- `ratelimit/RateLimitFilterPathTest` — матчинг пути: segment-exact префикс (`/v1` не глотает `/v10`), учёт context-path.
 
 ## Известные особенности запуска
 

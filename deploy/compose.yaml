@@ -68,6 +68,7 @@ services:
       ACCOUNT_CACHE_LEASE_MS: "800"
       ACCOUNT_CACHE_MARGIN_MS: "400"
       ACCOUNT_CACHE_STALE_MS: "5000"
+      RATE_LIMIT_CLIENT_1_API_KEY: ${RATE_LIMIT_CLIENT_1_API_KEY}
 
   app-b:
     build:
@@ -92,6 +93,7 @@ services:
       ACCOUNT_CACHE_LEASE_MS: "800"
       ACCOUNT_CACHE_MARGIN_MS: "400"
       ACCOUNT_CACHE_STALE_MS: "5000"
+      RATE_LIMIT_CLIENT_1_API_KEY: ${RATE_LIMIT_CLIENT_1_API_KEY}
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.67.0
@@ -132,6 +134,7 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/outbox-dashboard.json:/var/lib/grafana/dashboards/outbox-dashboard.json:ro
       - ./grafana/cache-dashboard.json:/var/lib/grafana/dashboards/cache-dashboard.json:ro
+      - ./grafana/rate-limit-dashboard.json:/var/lib/grafana/dashboards/rate-limit-dashboard.json:ro
     depends_on:
       - prometheus
 

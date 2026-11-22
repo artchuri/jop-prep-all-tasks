@@ -31,6 +31,26 @@
 
 В compose задаётся переменными `ACCOUNT_CACHE_*` для каждого инстанса: граница устаревания — решение деплоя, а не константа кода. Оба инстанса обязаны иметь одинаковые значения.
 
+## rate-limit.* (распределённый лимитер, ACC-107)
+
+Принцип «ноль дефолтов»: каждое значение задано явно в `application.yaml`; пропущенное поле или неразрезолвенная env-переменная **роняет старт** с сообщением, какое поле задать. API-ключ приходит только из окружения: `RATE_LIMIT_CLIENT_1_API_KEY` (см. `deploy/.env.example`; локальный запуск из IDE без `deploy/.env` не стартует — так и задумано, Q4 дизайн-дока).
+
+| Ключ | Значение в репо | Смысл |
+|---|---|---|
+| `enabled` | true | Kill-switch; `false` только для отката (обходит лимитер целиком, I7) |
+| `outage-strategy` | reject | `reject` = fail-closed 503 при недоступности Redis; `allow` = аварийный fail-open вручную (Q7) |
+| `path-prefix` | /v1 | Что попадает под лимитер; `/actuator/**` всегда вне |
+| `window-ms` | 60000 | Окно sliding window counter; лимиты из тикета ×60 приведены к минуте (Q3) |
+| `default-limit-per-minute` | 600 | Бакет для незапротоколированных путей под `/v1` |
+| `outage-retry-after-seconds` | 30 | `Retry-After` у 503 |
+| `pool-max-active/idle/min-idle` | 16 / 8 / 2 | Выделенный Jedis-пул лимитера, не делит коннекты с кэшем (Q10) |
+| `pool-command-timeout-ms` | 25 | Borrow + socket timeout: граница детекции отказа (Q10) |
+| `clients[].name / api-key` | local / env | Allowlist клиентов; дубль ключа или имени = падение старта |
+| `endpoints[].id/method/pattern/limit-per-minute` | get-account 6000, freeze 600, transfer 1200 | Таблица бакетов; порядок объявления = порядок матчинга |
+| `peak-profiles[]` | [] | Cron-пики: `{cron, duration, multiplier ≤ 3}`, только предсказуемые пики (Q9) |
+
+В compose ключ передаётся через `RATE_LIMIT_CLIENT_1_API_KEY` для обоих инстансов. Смена лимитов/окон — правка yaml + рестарт (хот-релоада нет, Q9).
+
 ## resilience4j.circuitbreaker.instances.outbox-kafka.*
 
 Circuit breaker доставки outbox в Kafka: open после 5 последовательных фейлов отправки, 30 с до half-open, 1 пробная отправка. При OPEN `OutboxPublisher.poll()` пропускает claim — строки остаются NEW, попытки не сгорают. Пороги можно крутить без пересборки.
