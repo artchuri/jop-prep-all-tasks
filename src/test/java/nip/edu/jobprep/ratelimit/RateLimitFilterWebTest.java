@@ -1,5 +1,11 @@
 package nip.edu.jobprep.ratelimit;
 
+import nip.edu.jobprep.controller.AccountController;
+import nip.edu.jobprep.exceptions.AccountNotFoundException;
+import nip.edu.jobprep.service.AccountService;
+import org.mockito.Mockito;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = nip.edu.jobprep.controller.AccountController.class)
+@WebMvcTest(controllers = AccountController.class)
 @TestPropertySource(properties = {
         "rate-limit.enabled=true",
         "rate-limit.outage-retry-after-seconds=30"
@@ -34,8 +40,8 @@ class RateLimitFilterWebTest {
 
     @Autowired MockMvc mvc;
 
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
-    nip.edu.jobprep.service.AccountService accountService;
+    @MockitoBean
+    AccountService accountService;
 
     @MockitoBean RateLimiter limiter;
 
@@ -46,7 +52,7 @@ class RateLimitFilterWebTest {
 
     @TestConfiguration
 
-    @org.springframework.boot.context.properties.EnableConfigurationProperties(RateLimitProperties.class)
+    @EnableConfigurationProperties(RateLimitProperties.class)
     static class Mocks {
         @Bean
         Clock rateLimitClock() { return Clock.fixed(NOW, ZoneOffset.UTC); }
@@ -58,7 +64,7 @@ class RateLimitFilterWebTest {
                                         RateLimitMetrics metrics,
                                         PeakProfileEvaluator peaks,
                                         Clock rateLimitClock,
-                                        tools.jackson.databind.ObjectMapper objectMapper) {
+                                        ObjectMapper objectMapper) {
             return new RateLimitFilter(properties, resolver, classifier, limiter, metrics, peaks, rateLimitClock, objectMapper);
         }
     }
@@ -88,7 +94,7 @@ class RateLimitFilterWebTest {
     void missingKeyIs401WithoutTouchingTheLimiter() throws Exception {
         mvc.perform(get("/v1/account/1"))
                 .andExpect(status().isUnauthorized());
-        org.mockito.Mockito.verify(limiter, org.mockito.Mockito.never()).reserve(any(), any(), anyDouble(), anyLong());
+        Mockito.verify(limiter, Mockito.never()).reserve(any(), any(), anyDouble(), anyLong());
     }
 
     @Test
@@ -123,11 +129,11 @@ class RateLimitFilterWebTest {
 
     @Test
     void notFoundIsCountedNotRefunded() throws Exception {
-        when(accountService.get(999999L)).thenThrow(new nip.edu.jobprep.exceptions.AccountNotFoundException("account 999999 not found"));
+        when(accountService.get(999999L)).thenThrow(new AccountNotFoundException("account 999999 not found"));
         when(limiter.reserve(any(), any(), anyDouble(), anyLong())).thenReturn(allowed());
         mvc.perform(get("/v1/account/999999").header("X-API-Key", "key-ok"))
                 .andExpect(status().isNotFound());
-        org.mockito.Mockito.verify(limiter, org.mockito.Mockito.never()).refund(any());
+        Mockito.verify(limiter, Mockito.never()).refund(any());
     }
 
     @Test

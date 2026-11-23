@@ -1,5 +1,6 @@
 package nip.edu.jobprep.outbox.core;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import nip.edu.jobprep.outbox.event.DomainEvent;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -46,7 +47,7 @@ class OutboxPublisherRetryCharacterizationIT extends AbstractIntegrationTest {
     private OutboxPublisher publisher(KafkaTemplate<String, String> template) {
         return new OutboxPublisher(outboxRepository, template, new ObjectMapper(),
                 new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
-                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults());
+                CircuitBreakerRegistry.ofDefaults());
     }
 
     private KafkaTemplate<String, String> brokenTemplate(String bootstrapServers) {

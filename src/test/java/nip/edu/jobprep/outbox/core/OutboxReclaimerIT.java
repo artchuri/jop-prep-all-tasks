@@ -1,5 +1,6 @@
 package nip.edu.jobprep.outbox.core;
 
+import org.jooq.impl.DSL;
 import nip.edu.jobprep.model.GlobalValues;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import nip.edu.jobprep.test.integration.AbstractIntegrationTest;
@@ -31,7 +32,7 @@ class OutboxReclaimerIT extends AbstractIntegrationTest {
                 .set(field("event_type"), "TRANSFER_COMPLETED")
                 .set(field("aggregate_id"), 1L)
                 .set(field("user_id"), 1L)
-                .set(org.jooq.impl.DSL.field("payload", org.jooq.impl.SQLDataType.JSONB), org.jooq.impl.DSL.val("{}").cast(org.jooq.impl.SQLDataType.JSONB))
+                .set(DSL.field("payload", SQLDataType.JSONB), DSL.val("{}").cast(SQLDataType.JSONB))
                 .set(field("created_at"), Instant.now())
                 .set(field("attempt_count"), 5)
                 .set(field("status"), status)

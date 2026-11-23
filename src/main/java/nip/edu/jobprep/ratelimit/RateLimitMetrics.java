@@ -1,5 +1,8 @@
 package nip.edu.jobprep.ratelimit;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -42,7 +45,7 @@ public final class RateLimitMetrics {
                 counted.put(tag(c.name(), ep), counter("rate_limit_requests_total", "client", c.name(), "endpoint", ep, "result", "counted"));
                 AtomicReference<Double> ratio = new AtomicReference<>(0.0);
                 usage.put(tag(c.name(), ep), ratio);
-                Gauge.builder("rate_limit_window_usage_ratio", ratio, r -> r.get())
+                Gauge.builder("rate_limit_window_usage_ratio", ratio, AtomicReference::get)
                         .tag("client", c.name()).tag("endpoint", ep).register(meters);
             }
         }
@@ -60,7 +63,7 @@ public final class RateLimitMetrics {
     }
 
     private static Iterable<String> endpointIds(RateLimitProperties properties) {
-        java.util.List<String> ids = new java.util.ArrayList<>();
+        List<String> ids = new ArrayList<>();
         for (RateLimitProperties.EndpointLimit e : properties.endpoints()) ids.add(e.id());
         ids.add("default");
         return ids;
@@ -101,11 +104,11 @@ public final class RateLimitMetrics {
     public void redisErrorRefund() { redisErrorsRefund.increment(); }
 
     public void evalReserve(boolean failed, long nanos) {
-        (failed ? reserveError : reserveSuccess).record(nanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        (failed ? reserveError : reserveSuccess).record(nanos, TimeUnit.NANOSECONDS);
     }
 
     public void evalRefund(boolean failed, long nanos) {
-        (failed ? refundError : refundSuccess).record(nanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        (failed ? refundError : refundSuccess).record(nanos, TimeUnit.NANOSECONDS);
     }
 
     public void windowUsage(String client, String endpoint, double used, double limit) {

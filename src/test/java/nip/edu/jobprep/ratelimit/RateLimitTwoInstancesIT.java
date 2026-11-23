@@ -1,5 +1,6 @@
 package nip.edu.jobprep.ratelimit;
 
+import org.springframework.data.redis.core.RedisCallback;
 import nip.edu.jobprep.JobPrepApplication;
 import nip.edu.jobprep.test.integration.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterAll;
@@ -96,7 +97,7 @@ class RateLimitTwoInstancesIT {
                 values (%d, %d, 'ACTIVE', now(), now(), now(), 0, 100.00, 'RUB')
                 """.formatted(ACCOUNT_ID, ACCOUNT_ID));
         StringRedisTemplate redis = instanceA.getBean(StringRedisTemplate.class);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) c -> {
+        redis.execute((RedisCallback<Void>) c -> {
             c.serverCommands().flushAll();
             return null;
         });

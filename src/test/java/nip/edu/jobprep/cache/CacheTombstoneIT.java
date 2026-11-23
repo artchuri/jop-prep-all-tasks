@@ -1,5 +1,6 @@
 package nip.edu.jobprep.cache;
 
+import org.springframework.data.redis.core.RedisCallback;
 import nip.edu.jobprep.config.AccountCacheProperties;
 import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.utils.cache.AccountCacheScripts;
@@ -59,7 +60,7 @@ class CacheTombstoneIT extends AbstractCacheIntegrationTest {
     @BeforeEach
     void init() {
         cache = cacheManager.getCache(LuaCache.NAME);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> {
+        redis.execute((RedisCallback<Void>) conn -> {
             conn.serverCommands().flushAll();
             return null;
         });

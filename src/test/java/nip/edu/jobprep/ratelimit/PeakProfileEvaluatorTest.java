@@ -1,5 +1,6 @@
 package nip.edu.jobprep.ratelimit;
 
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -19,7 +20,7 @@ class PeakProfileEvaluatorTest {
     }
 
     private static long at(String iso) {
-        return java.time.Instant.parse(iso).toEpochMilli();
+        return Instant.parse(iso).toEpochMilli();
     }
 
     @Test

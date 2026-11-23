@@ -1,5 +1,8 @@
 package nip.edu.jobprep.cache;
 
+import org.springframework.data.redis.core.RedisCallback;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 import io.micrometer.core.instrument.MeterRegistry;
 import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.model.GlobalValues;
@@ -85,8 +88,8 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
     @Autowired
     KafkaTemplate<String, String> kafka;
 
-    static final org.testcontainers.containers.KafkaContainer KAFKA =
-            new org.testcontainers.containers.KafkaContainer(org.testcontainers.utility.DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
+    static final KafkaContainer KAFKA =
+            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
 
     @TestConfiguration
     static class BrokenKafkaProducerConfig {
@@ -108,7 +111,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
         jdbc.update("delete from outbox");
         jdbc.update("delete from account_status_history");
         jdbc.update("delete from transfers_history");
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
+        redis.execute((RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
         seedAccount(1, "100.00", "ACTIVE", 0);
     }
 
@@ -162,7 +165,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
             // (the consumer's Kafka listener container is not started in this context)
         });
         // Direct handler invocation: pins the contract regardless of container lifecycle
-        org.apache.kafka.clients.consumer.ConsumerRecord<String, String> rec =
+        ConsumerRecord<String, String> rec =
                 new ConsumerRecord<>(GlobalValues.KAFKA_TOPIC, 0, 0, "1", envelope);
         consumer.onMessage(rec, () -> { });
 
@@ -184,7 +187,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
                 "userId", 1,
                 "occurredAt", Instant.now().toString(),
                 "payload", payload));
-        org.apache.kafka.clients.consumer.ConsumerRecord<String, String> rec =
+        ConsumerRecord<String, String> rec =
                 new ConsumerRecord<>(GlobalValues.KAFKA_TOPIC, 0, 0, "1", envelope);
         consumer.onMessage(rec, () -> { });
         // version -1 <= cached 0 -> NOOP, still fresh
@@ -207,7 +210,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
 
     @Test
     void missTakesLeaseThenFillLandsUnderToken() throws Exception {
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
+        redis.execute((RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
         // Sequential lease handoff: the first reader takes the lease, loads from
         // PG and fills under the token. (Real concurrency lives in
         // realConcurrentMissCollapsesIntoSinglePgFill below.)
@@ -226,7 +229,7 @@ class AccountCacheIntegrationIT extends AbstractCacheIntegrationTest {
      */
     @Test
     void realConcurrentMissCollapsesIntoSinglePgFill() throws Exception {
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
+        redis.execute((RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
         double waitBefore = waitCounter();
         AtomicInteger dbCalls = new AtomicInteger();
         Callable<AccountResponseDto> loader = () -> {

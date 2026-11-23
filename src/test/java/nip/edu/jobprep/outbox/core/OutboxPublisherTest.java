@@ -1,5 +1,6 @@
 package nip.edu.jobprep.outbox.core;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import nip.edu.jobprep.outbox.event.DomainEvent;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -39,7 +40,7 @@ class OutboxPublisherTest {
         when(outboxRepository.recordFailure(eq(1L), eq(row.createdAt()), anyString(), eq(5), anyString(), any(OutboxRetryPolicy.class))).thenReturn(1);
 
         new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
-                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults()).poll();
+                CircuitBreakerRegistry.ofDefaults()).poll();
 
         verify(outboxRepository).recordFailure(eq(1L), eq(row.createdAt()), anyString(), eq(5), anyString(), any(OutboxRetryPolicy.class));
         verify(outboxRepository, never()).markAsCompleted(anyLong(), any(), anyString());
@@ -55,7 +56,7 @@ class OutboxPublisherTest {
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
-                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults()).poll();
+                CircuitBreakerRegistry.ofDefaults()).poll();
 
         verify(outboxRepository).markAsCompleted(eq(2L), eq(row.createdAt()), anyString());
         verify(outboxRepository, never()).recordFailure(anyLong(), any(), anyString(), anyInt(), anyString(), any(OutboxRetryPolicy.class));
@@ -70,7 +71,7 @@ class OutboxPublisherTest {
         when(outboxRepository.hasOlderActiveForUser(7L, 2L)).thenReturn(true);
 
         new OutboxPublisher(outboxRepository, kafkaTemplate, new ObjectMapper(), new OutboxMetrics(new SimpleMeterRegistry()), new OutboxRetryPolicy(), new SimpleMeterRegistry(),
-                io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry.ofDefaults()).poll();
+                CircuitBreakerRegistry.ofDefaults()).poll();
 
         verifyNoInteractions(kafkaTemplate);
         verify(outboxRepository, never()).markAsCompleted(anyLong(), any(), anyString());

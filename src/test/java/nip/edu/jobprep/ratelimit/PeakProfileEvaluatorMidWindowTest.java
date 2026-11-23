@@ -1,5 +1,6 @@
 package nip.edu.jobprep.ratelimit;
 
+import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -16,7 +17,7 @@ class PeakProfileEvaluatorMidWindowTest {
             new RateLimitProperties.PeakProfile("0 0 12 * * *", Duration.ofMinutes(30), 2.5);
 
     private static long atUtc(int hour, int minute) {
-        ZonedDateTime t = ZonedDateTime.of(LocalDate.of(2026, 11, 21), java.time.LocalTime.of(hour, minute), ZoneOffset.UTC);
+        ZonedDateTime t = ZonedDateTime.of(LocalDate.of(2026, 11, 21), LocalTime.of(hour, minute), ZoneOffset.UTC);
         return t.toInstant().toEpochMilli();
     }
 

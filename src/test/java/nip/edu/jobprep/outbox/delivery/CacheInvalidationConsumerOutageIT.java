@@ -1,5 +1,6 @@
 package nip.edu.jobprep.outbox.delivery;
 
+import org.springframework.data.redis.core.RedisCallback;
 import io.micrometer.core.instrument.MeterRegistry;
 import nip.edu.jobprep.cache.AbstractCacheIntegrationTest;
 import nip.edu.jobprep.cache.TestRedis;
@@ -111,7 +112,7 @@ class CacheInvalidationConsumerOutageIT extends AbstractCacheIntegrationTest {
                 insert into accounts (id, user_id, status, created_at, updated_at, status_changed_at, version, amount, currency)
                 values (1, 1, 'ACTIVE', now(), now(), now(), 0, 100.00, 'RUB')
                 """);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> {
+        redis.execute((RedisCallback<Void>) conn -> {
             conn.serverCommands().flushAll();
             return null;
         });

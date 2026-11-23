@@ -1,4 +1,6 @@
 package nip.edu.jobprep.ratelimit;
+import lombok.extern.slf4j.Slf4j;
+
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -6,8 +8,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 
+@Slf4j
 public final class RateLimiter {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RateLimiter.class);
 
     private final RateLimitScripts scripts;
 
@@ -32,7 +34,7 @@ public final class RateLimiter {
         try {
             RateLimitScripts.ReserveResult r = scripts.reserve(keys, nowMs, window, effectiveLimit);
             metrics.windowUsage(client.name(), endpoint.id(), r.used(), effectiveLimit);
-            return new Reservation(client, endpoint, r.allowed(), r.retryAfterMs(), r.used(), keys.get(0));
+            return new Reservation(client, endpoint, r.allowed(), r.retryAfterMs(), r.used(), keys.getFirst());
         } catch (RuntimeException e) {
             log.warn("rate limit reserve failed: {}: {}", e.getClass().getSimpleName(), e.getMessage());
             throw new RateLimitOutageException(e);

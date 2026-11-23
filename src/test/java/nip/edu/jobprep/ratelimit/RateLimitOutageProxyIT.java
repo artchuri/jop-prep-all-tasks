@@ -1,5 +1,6 @@
 package nip.edu.jobprep.ratelimit;
 
+import org.springframework.data.redis.core.RedisCallback;
 import io.micrometer.core.instrument.MeterRegistry;
 import nip.edu.jobprep.cache.AbstractCacheIntegrationTest;
 import nip.edu.jobprep.cache.TestRedis;
@@ -67,7 +68,7 @@ class RateLimitOutageProxyIT extends AbstractCacheIntegrationTest {
                 insert into accounts (id, user_id, status, created_at, updated_at, status_changed_at, version, amount, currency)
                 values (%d, %d, 'ACTIVE', now(), now(), now(), 0, 100.00, 'RUB')
                 """.formatted(ACCOUNT_ID, ACCOUNT_ID));
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) c -> {
+        redis.execute((RedisCallback<Void>) c -> {
             c.serverCommands().flushAll();
             return null;
         });

@@ -1,5 +1,6 @@
 package nip.edu.jobprep.cache;
 
+import org.springframework.data.redis.core.RedisCallback;
 import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.service.AccountService;
 import nip.edu.jobprep.utils.cache.AccountCacheScripts;
@@ -54,7 +55,7 @@ class RedisOutageGetIT extends AbstractCacheIntegrationTest {
                 insert into accounts (id, user_id, status, created_at, updated_at, status_changed_at, version, amount, currency)
                 values (7, 7, 'ACTIVE', now(), now(), now(), 0, 250.00, 'RUB')
                 """);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> {
+        redis.execute((RedisCallback<Void>) conn -> {
             conn.serverCommands().flushAll();
             return null;
         });

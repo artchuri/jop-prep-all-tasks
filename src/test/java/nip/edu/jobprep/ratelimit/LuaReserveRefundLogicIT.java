@@ -1,5 +1,8 @@
 package nip.edu.jobprep.ratelimit;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.Tag;
+import org.springframework.data.redis.core.RedisCallback;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@org.junit.jupiter.api.Tag("integration")
+@Tag("integration")
 class LuaReserveRefundLogicIT {
     private static final GenericContainer<?> REDIS =
             new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
@@ -37,14 +40,14 @@ class LuaReserveRefundLogicIT {
                 REDIS.getHost(), REDIS.getMappedPort(6379)));
         factory.afterPropertiesSet();
         redis = new StringRedisTemplate(factory);
-        io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
-                new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        SimpleMeterRegistry registry =
+                new SimpleMeterRegistry();
         metrics = new RateLimitMetrics(registry, new RateLimitProperties(
                 false, "reject", "/v1", WINDOW, 600, 30,
                 List.of(new RateLimitProperties.ClientSpec("c", "k")),
                 List.of(), 16, 8, 2, 25, List.of()));
         scripts = new RateLimitScripts(factory, metrics);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) c -> { c.serverCommands().flushAll(); return null; });
+        redis.execute((RedisCallback<Void>) c -> { c.serverCommands().flushAll(); return null; });
     }
 
     @AfterAll

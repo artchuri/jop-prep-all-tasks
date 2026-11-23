@@ -1,9 +1,11 @@
 package nip.edu.jobprep.ratelimit;
 
+import java.time.Clock;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,7 +26,7 @@ public final class RateLimitFilter extends OncePerRequestFilter {
 
     private final PeakProfileEvaluator peakProfiles;
 
-    private final java.time.Clock clock;
+    private final Clock clock;
 
     private final ObjectMapper objectMapper;
 
@@ -34,7 +36,7 @@ public final class RateLimitFilter extends OncePerRequestFilter {
                            RateLimiter rateLimiter,
                            RateLimitMetrics metrics,
                            PeakProfileEvaluator peakProfiles,
-                           java.time.Clock clock,
+                           Clock clock,
                            ObjectMapper objectMapper) {
         this.properties = properties;
         this.apiKeyResolver = apiKeyResolver;
@@ -47,7 +49,7 @@ public final class RateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = pathWithinApplication(request);
         String prefix = properties.pathPrefix();
         return !properties.enabled() || !(path.equals(prefix) || path.startsWith(prefix + "/"));
@@ -62,8 +64,8 @@ public final class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain chain) throws ServletException, IOException {
         RateLimitProperties.ClientSpec client = apiKeyResolver.resolve(request.getHeader("X-API-Key"));
         if (client == null) {
             metrics.unauthorized();
@@ -80,12 +82,11 @@ public final class RateLimitFilter extends OncePerRequestFilter {
             reservation = rateLimiter.reserve(client, endpoint, limit, nowMs);
         } catch (RateLimitOutageException e) {
             metrics.outage(client.name());
-            switch (properties.outageStrategy()) {
-                case "allow" -> {
-                    chain.doFilter(request, response);
-                    return;
-                }
-                default -> problem(response, 503, "service unavailable",
+            if (properties.outageStrategy().equals("allow")) {
+                chain.doFilter(request, response);
+                return;
+            } else {
+                problem(response, 503, "service unavailable",
                         "rate limiter is temporarily unavailable, retry", "RATE_LIMITER_UNAVAILABLE",
                         properties.outageRetryAfterSeconds());
             }

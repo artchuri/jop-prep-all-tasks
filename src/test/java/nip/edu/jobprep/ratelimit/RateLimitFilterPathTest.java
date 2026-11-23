@@ -1,5 +1,7 @@
 package nip.edu.jobprep.ratelimit;
 
+import java.time.Clock;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -9,13 +11,13 @@ class RateLimitFilterPathTest {
     private static RateLimitProperties props(boolean enabled) {
         return new RateLimitProperties(
                 enabled, "reject", "/v1", 60000L, 600, 30,
-                java.util.List.of(new RateLimitProperties.ClientSpec("c", "k")),
-                java.util.List.of(), 16, 8, 2, 25, java.util.List.of());
+                List.of(new RateLimitProperties.ClientSpec("c", "k")),
+                List.of(), 16, 8, 2, 25, List.of());
     }
 
     private static RateLimitFilter filter(boolean enabled) {
         return new RateLimitFilter(props(enabled), null, null, null, null, null,
-                java.time.Clock.systemUTC(), null);
+                Clock.systemUTC(), null);
     }
 
     private static MockHttpServletRequest request(String uri) {

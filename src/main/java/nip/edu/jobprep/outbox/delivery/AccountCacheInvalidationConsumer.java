@@ -1,4 +1,5 @@
 package nip.edu.jobprep.outbox.delivery;
+import lombok.extern.slf4j.Slf4j;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import nip.edu.jobprep.outbox.event.DomainEvent;
@@ -6,8 +7,6 @@ import nip.edu.jobprep.utils.cache.LuaCache;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
@@ -20,9 +19,8 @@ import java.util.Map;
 
 
 @Component
+@Slf4j
 public class AccountCacheInvalidationConsumer {
-
-    private static final Logger log = LoggerFactory.getLogger(AccountCacheInvalidationConsumer.class);
     private static final TypeReference<Map<String, Object>> ENVELOPE = new TypeReference<>() {};
 
     private final CacheManager cacheManager;

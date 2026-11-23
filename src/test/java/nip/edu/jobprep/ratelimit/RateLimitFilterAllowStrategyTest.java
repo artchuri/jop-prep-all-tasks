@@ -1,5 +1,10 @@
 package nip.edu.jobprep.ratelimit;
 
+import nip.edu.jobprep.controller.AccountController;
+import nip.edu.jobprep.exceptions.AccountNotFoundException;
+import nip.edu.jobprep.service.AccountService;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +27,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = nip.edu.jobprep.controller.AccountController.class)
+@WebMvcTest(controllers = AccountController.class)
 @TestPropertySource(properties = {
         "rate-limit.enabled=true",
         "rate-limit.outage-strategy=allow"
@@ -32,8 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RateLimitFilterAllowStrategyTest {
     @Autowired MockMvc mvc;
 
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
-    nip.edu.jobprep.service.AccountService accountService;
+    @MockitoBean
+    AccountService accountService;
 
     @MockitoBean RateLimiter limiter;
 
@@ -44,7 +49,7 @@ class RateLimitFilterAllowStrategyTest {
 
     @TestConfiguration
 
-    @org.springframework.boot.context.properties.EnableConfigurationProperties(RateLimitProperties.class)
+    @EnableConfigurationProperties(RateLimitProperties.class)
     static class Mocks {
         @Bean
         Clock rateLimitClock() { return Clock.fixed(Instant.parse("2026-11-19T12:00:00Z"), ZoneOffset.UTC); }
@@ -56,7 +61,7 @@ class RateLimitFilterAllowStrategyTest {
                                         RateLimitMetrics metrics,
                                         PeakProfileEvaluator peaks,
                                         Clock rateLimitClock,
-                                        tools.jackson.databind.ObjectMapper objectMapper) {
+                                        ObjectMapper objectMapper) {
             return new RateLimitFilter(properties, resolver, classifier, limiter, metrics, peaks, rateLimitClock, objectMapper);
         }
     }

@@ -1,5 +1,7 @@
 package nip.edu.jobprep.test.account;
 
+import nip.edu.jobprep.outbox.core.OutboxService;
+import nip.edu.jobprep.utils.cache.CacheEvictAfterCommit;
 import nip.edu.jobprep.dto.FreezeAccountResponseDto;
 import nip.edu.jobprep.entity.Account;
 import nip.edu.jobprep.entity.AccountStatus;
@@ -40,13 +42,13 @@ public class AccountServiceImplTest {
     private AccountHistoryRepository historyRepository;
 
     @Mock
-    private nip.edu.jobprep.outbox.core.OutboxService outboxService;
+    private OutboxService outboxService;
 
     @Spy
     private AccountResponseMapper responseMapper = new AccountResponseMapper();
 
     @Mock
-    private nip.edu.jobprep.utils.cache.CacheEvictAfterCommit cacheEvict;
+    private CacheEvictAfterCommit cacheEvict;
 
     @Captor
     private ArgumentCaptor<Instant> changedAtCaptor;

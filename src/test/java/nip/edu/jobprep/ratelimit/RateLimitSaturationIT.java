@@ -1,5 +1,6 @@
 package nip.edu.jobprep.ratelimit;
 
+import org.springframework.data.redis.core.RedisCallback;
 import nip.edu.jobprep.cache.AbstractCacheIntegrationTest;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +69,7 @@ class RateLimitSaturationIT extends AbstractCacheIntegrationTest {
                 insert into accounts (id, user_id, status, created_at, updated_at, status_changed_at, version, amount, currency)
                 values (%d, %d, 'ACTIVE', now(), now(), now(), 0, 100.00, 'RUB')
                 """.formatted(ACCOUNT_ID, ACCOUNT_ID));
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) c -> {
+        redis.execute((RedisCallback<Void>) c -> {
             c.serverCommands().flushAll();
             return null;
         });

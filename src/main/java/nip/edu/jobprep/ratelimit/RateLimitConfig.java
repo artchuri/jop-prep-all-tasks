@@ -1,5 +1,6 @@
 package nip.edu.jobprep.ratelimit;
 
+import tools.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -58,7 +59,7 @@ public class RateLimitConfig {
             RateLimitMetrics metrics,
             PeakProfileEvaluator peakProfiles,
             Clock rateLimitClock,
-            tools.jackson.databind.ObjectMapper objectMapper) {
+            ObjectMapper objectMapper) {
         RateLimitFilter filter = new RateLimitFilter(properties, apiKeyResolver, endpointClassifier,
                 rateLimiter, metrics, peakProfiles, rateLimitClock, objectMapper);
         FilterRegistrationBean<RateLimitFilter> reg = new FilterRegistrationBean<>(filter);

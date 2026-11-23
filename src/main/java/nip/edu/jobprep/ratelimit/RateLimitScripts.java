@@ -1,4 +1,7 @@
 package nip.edu.jobprep.ratelimit;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -7,8 +10,8 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 import java.util.List;
 
-public final class RateLimitScripts implements org.springframework.beans.factory.DisposableBean {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RateLimitScripts.class);
+@Slf4j
+public final class RateLimitScripts implements DisposableBean {
 
     private static final DefaultRedisScript<List> RESERVE_SCRIPT = script("redis/rate_limit_reserve.lua");
 
@@ -78,7 +81,7 @@ public final class RateLimitScripts implements org.springframework.beans.factory
 
     @Override
     public void destroy() {
-        if (redis.getConnectionFactory() instanceof org.springframework.data.redis.connection.jedis.JedisConnectionFactory jf) {
+        if (redis.getConnectionFactory() instanceof JedisConnectionFactory jf) {
             jf.destroy();
         }
     }
