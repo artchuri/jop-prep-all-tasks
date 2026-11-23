@@ -1,5 +1,11 @@
 package nip.edu.jobprep.cache;
 
+import nip.edu.jobprep.exceptions.InsufficientFundsException;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.data.redis.core.RedisCallback;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 import nip.edu.jobprep.dto.TransferRequestDto;
 import nip.edu.jobprep.utils.cache.AccountCacheScripts;
 import nip.edu.jobprep.utils.cache.LuaCache;
@@ -54,8 +60,8 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
-    static final org.testcontainers.containers.KafkaContainer KAFKA =
-            new org.testcontainers.containers.KafkaContainer(org.testcontainers.utility.DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
+    static final KafkaContainer KAFKA =
+            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
 
     @TestConfiguration
     static class KafkaConfig {
@@ -63,9 +69,9 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
         KafkaTemplate<String, String> testKafkaTemplate() {
             KAFKA.start();
             Map<String, Object> props = Map.ofEntries(
-                    Map.entry(org.apache.kafka.clients.producer.ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers()),
-                    Map.entry(org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class.getName()),
-                    Map.entry(org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class.getName()));
+                    Map.entry(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers()),
+                    Map.entry(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName()),
+                    Map.entry(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName()));
             return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
         }
     }
@@ -83,7 +89,7 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
                 values (1, 1, 'ACTIVE', now(), now(), now(), 0, 100.00, 'RUB'),
                        (2, 1, 'ACTIVE', now(), now(), now(), 0, 0.00, 'RUB')
                 """);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
+        redis.execute((RedisCallback<Void>) conn -> { conn.serverCommands().flushAll(); return null; });
     }
 
     @Test
@@ -98,7 +104,7 @@ class CacheRollbackSafetyIT extends AbstractCacheIntegrationTest {
         assertThatThrownBy(() -> transferService.transfer(
                 UUID.randomUUID().toString(),
                 new TransferRequestDto(2L, 1L, 1L, new BigDecimal("500"))))
-                .isInstanceOf(nip.edu.jobprep.exceptions.InsufficientFundsException.class);
+                .isInstanceOf(InsufficientFundsException.class);
 
         // PG unchanged
         assertThat(jdbc.queryForObject("select amount from accounts where id = 1", BigDecimal.class))

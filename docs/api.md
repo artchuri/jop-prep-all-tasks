@@ -2,12 +2,23 @@
 
 Base URL: `http://localhost:8081` (app-a) / `http://localhost:8082` (app-b). Оба инстанса идентичны и работают с одним Redis/PostgreSQL.
 
+## Rate limiting (ACC-107)
+
+Все бизнес-эндпоинты ниже защищены распределённым лимитером (дизайн-док ACC-107, лимиты в `rate-limit.*` конфиге):
+
+- **`X-API-Key` обязателен** на каждый запрос к `/v1/**`. Нет или неизвестный ключ → `401` `UNAUTHORIZED` (ProblemDetail), лимит не расходуется. Ключи — allowlist `rate-limit.clients`, значение приходит из `RATE_LIMIT_CLIENT_1_API_KEY` (`deploy/.env`).
+- **Лимиты на клиента в минуту** (окно 60 с, sliding window counter в Redis, **глобальный** для обоих инстансов): `GET /v1/account/{id}` — 6000, `POST /v1/account/{id}/freeze` — 600, `POST /v1/transfer` — 1200, незапротоколированный путь под `/v1` — default 600.
+- Превышение → `429` `RATE_LIMITED` + заголовок `Retry-After` (секунды до расчётного освобождения слота).
+- Успешные (2xx/3xx) запросы расходуют лимит. `4xx`/`5xx` **не** расходуют (слот возвращается, refund), **кроме `404`/`405`**: скан путей и методов считается намеренно (правка НФТ, согласована 2026-11-21).
+- Redis лимитера недоступен → `503` `RATE_LIMITER_UNAVAILABLE` + `Retry-After` (fail-closed; аварийный fail-open — `rate-limit.outage-strategy: allow`).
+- `/actuator/**` вне лимитера. Метрики и алерты — [observability.md](observability.md#rate-limiting-acc-107).
+
 ## GET /v1/account/{id}
 
 Читает аккаунт через cache-aside (Redis; при miss — PostgreSQL). Ответ содержит `Cache-Control: no-store` (ответ может быть stale, кэшировать его выше нельзя).
 
 ```bash
-curl -i http://localhost:8081/v1/account/1
+curl -i -H "X-API-Key: $RATE_LIMIT_CLIENT_1_API_KEY" http://localhost:8081/v1/account/1
 ```
 
 ```json
@@ -22,6 +33,7 @@ curl -i http://localhost:8081/v1/account/1
 
 ```bash
 curl -X POST http://localhost:8081/v1/account/1/freeze \
+  -H "X-API-Key: $RATE_LIMIT_CLIENT_1_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"changedByUserId": 2}'
 ```
@@ -36,6 +48,7 @@ curl -X POST http://localhost:8081/v1/account/1/freeze \
 
 ```bash
 curl -X POST http://localhost:8082/v1/transfer \
+  -H "X-API-Key: $RATE_LIMIT_CLIENT_1_API_KEY" \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 7b8c1f2e-...' \
   -d '{"recipientAccountId": 2, "userId": 1, "fromAccountId": 1, "amount": "25.00"}'
@@ -49,4 +62,4 @@ curl -X POST http://localhost:8082/v1/transfer \
 
 ## Известное ограничение доверия
 
-`userId` в теле перевода и `changedByUserId` в freeze — доверенные поля: аутентификации/авторизации в проекте нет (учебный фокус — кэш и outbox, не безопасность). Любой клиент может перевести средства от имени любого пользователя.
+`userId` в теле перевода и `changedByUserId` в freeze — доверенные поля: аутентификации/авторизации в проекте нет (учебный фокус — кэш и outbox, не безопасность). Любой клиент может перевести средства от имени любого пользователя. `X-API-Key` — не аутентификация, а идентификация клиента для лимитера.

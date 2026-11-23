@@ -1,0 +1,156 @@
+{
+  "title": "Rate Limiting (ACC-107)",
+  "uid": "rate-limit-acc107",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Requests by result (per client/endpoint)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(rate_limit_requests_total[1m])) by (client, endpoint, result)",
+          "legendFormat": "{{client}}/{{endpoint}}/{{result}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Window usage ratio (0..1)",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate_limit_window_usage_ratio",
+          "legendFormat": "{{client}}/{{endpoint}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Reserve p99 latency",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(rate_limit_eval_seconds_bucket[5m])) by (le, op))",
+          "legendFormat": "p99 {{op}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Outages (5m)",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "increase(rate_limit_outage_total[5m])",
+          "legendFormat": "{{client}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "In-flight reservations",
+      "gridPos": {
+        "x": 18,
+        "y": 8,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate_limit_in_flight_reservations)",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Unauthorized requests",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "rate(rate_limit_unauthorized_total[5m])",
+          "legendFormat": "401/s"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Refunds (4xx/5xx not counted)",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(rate_limit_refunds_total[5m])) by (client)",
+          "legendFormat": "{{client}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Requests per 60s window — avg over 15m (NFT: avg per client)",
+      "gridPos": { "x": 0, "y": 22, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "avg_over_time(sum by (client, endpoint) (increase(rate_limit_requests_total[60s]))[15m:60s])",
+          "legendFormat": "avg {{client}}/{{endpoint}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Requests per 60s window — max over 15m (NFT: max per client)",
+      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "max_over_time(sum by (client, endpoint) (increase(rate_limit_requests_total[60s]))[15m:60s])",
+          "legendFormat": "max {{client}}/{{endpoint}}"
+        }
+      ]
+    }
+  ]
+}

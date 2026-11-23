@@ -42,3 +42,32 @@ groups:
         labels: { severity: warning }
         annotations:
           summary: "Outbox: {{ $value }} событий в REJECTED"
+
+  - name: rate-limit
+    rules:
+      - alert: RateLimiterOutage
+        expr: increase(rate_limit_outage_total[5m]) > 0
+        labels: { severity: critical }
+        annotations:
+          summary: "ACC-107: лимитер не смог проверить лимит в Redis (fail-closed 503)"
+
+      - alert: RateLimitEvalSlowP99
+        expr: histogram_quantile(0.99, sum(rate(rate_limit_eval_seconds_bucket[5m])) by (le)) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "ACC-107: p99 вызова Redis лимитера > 50ms (бюджет Q10 нарушен)"
+
+      - alert: ClientNearRateLimit
+        expr: rate_limit_window_usage_ratio > 0.9
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "ACC-107: клиент {{ $labels.client }} близок к лимиту {{ $labels.endpoint }}"
+
+      - alert: ClientRejectedSpike
+        expr: sum(rate(rate_limit_requests_total{result="rejected"}[5m])) by (client, endpoint) > 1
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "ACC-107: клиент {{ $labels.client }} стабильно получает 429 по {{ $labels.endpoint }} (>1/s за 5м)"

@@ -28,3 +28,32 @@ eureka:
 outbox:
   publisher:
     enabled: true
+
+rate-limit:
+  enabled: false
+  outage-strategy: reject
+  path-prefix: /v1
+  window-ms: 60000
+  default-limit-per-minute: 600
+  outage-retry-after-seconds: 30
+  pool-max-active: 16
+  pool-max-idle: 8
+  pool-min-idle: 2
+  pool-command-timeout-ms: 25
+  clients:
+    - name: test-client
+      api-key: test-client-key
+  endpoints:
+    - id: get-account
+      method: GET
+      pattern: "/v1/account/*"
+      limit-per-minute: 6000
+    - id: freeze
+      method: POST
+      pattern: "/v1/account/*/freeze"
+      limit-per-minute: 600
+    - id: transfer
+      method: POST
+      pattern: "/v1/transfer"
+      limit-per-minute: 1200
+  peak-profiles: []

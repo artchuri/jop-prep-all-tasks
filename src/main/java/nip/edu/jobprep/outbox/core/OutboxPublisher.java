@@ -1,12 +1,11 @@
 package nip.edu.jobprep.outbox.core;
+import lombok.extern.slf4j.Slf4j;
 
 import nip.edu.jobprep.model.GlobalValues;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -23,8 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 @ConditionalOnProperty(name = "outbox.publisher.enabled", havingValue = "true", matchIfMissing = true)
+@Slf4j
 public class OutboxPublisher {
-    private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
     /** Breaker instance name; thresholds are configured in application.yaml (resilience4j.*). */
     static final String BREAKER_NAME = "outbox-kafka";

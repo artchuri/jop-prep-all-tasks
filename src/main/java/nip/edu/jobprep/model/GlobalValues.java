@@ -1,5 +1,6 @@
 package nip.edu.jobprep.model;
 
+import java.time.ZoneOffset;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.regex.Pattern;
 public final class GlobalValues {
 
     /** One zone for every partition boundary and retention cutoff: mixed zones would shift months. */
-    public static final java.time.ZoneOffset ZONE_UTC = java.time.ZoneOffset.UTC;
+    public static final ZoneOffset ZONE_UTC = ZoneOffset.UTC;
     public static final DateTimeFormatter YEAR_MONTH_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM");
     public static final Pattern PARTITION_NAME = Pattern.compile("\\d{4}_\\d{2}");
     public static final String DDL_LOCK = "outbox_partition_ddl";

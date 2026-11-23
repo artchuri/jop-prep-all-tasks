@@ -1,5 +1,7 @@
 package nip.edu.jobprep.cache;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.data.redis.core.RedisCallback;
 import nip.edu.jobprep.dto.AccountResponseDto;
 import nip.edu.jobprep.utils.cache.AccountCacheScripts;
 import nip.edu.jobprep.utils.cache.LuaCache;
@@ -57,7 +59,7 @@ class CrossInstanceLeaseWaitIT extends AbstractCacheIntegrationTest {
     CacheManager cacheManager;
 
     @Autowired
-    io.micrometer.core.instrument.MeterRegistry meters;
+    MeterRegistry meters;
 
     @Autowired
     AccountCacheScripts scripts;
@@ -70,7 +72,7 @@ class CrossInstanceLeaseWaitIT extends AbstractCacheIntegrationTest {
     @BeforeEach
     void initCache() {
         cache = cacheManager.getCache(LuaCache.NAME);
-        redis.execute((org.springframework.data.redis.core.RedisCallback<Void>) conn -> {
+        redis.execute((RedisCallback<Void>) conn -> {
             conn.serverCommands().flushAll();
             return null;
         });

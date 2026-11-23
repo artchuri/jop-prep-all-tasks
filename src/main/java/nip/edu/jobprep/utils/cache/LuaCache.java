@@ -1,11 +1,11 @@
 package nip.edu.jobprep.utils.cache;
+import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 
 import nip.edu.jobprep.dto.AccountResponseDto;
 import java.math.BigDecimal;
 import nip.edu.jobprep.config.AccountCacheProperties;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.support.SimpleValueWrapper;
 import org.springframework.lang.Nullable;
@@ -18,11 +18,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 
+@Slf4j
 public class LuaCache implements Cache {
 
     public static final String NAME = "accounts";
-
-    private static final Logger log = LoggerFactory.getLogger(LuaCache.class);
 
     private final AccountCacheScripts scripts;
     private final MeterRegistry meters;
@@ -367,7 +366,7 @@ public class LuaCache implements Cache {
      * without this a Redis outage would break GETs that the DB could serve.
      */
     @Nullable
-    private <R> R redisQuietly(String operation, java.util.function.Supplier<R> call, @Nullable R onUnavailable) {
+    private <R> R redisQuietly(String operation, Supplier<R> call, @Nullable R onUnavailable) {
         try {
             return call.get();
         } catch (RuntimeException e) {

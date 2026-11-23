@@ -1,17 +1,15 @@
 package nip.edu.jobprep.exceptions;
+import lombok.extern.slf4j.Slf4j;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 
 import java.util.List;
 
 
+@Slf4j
 public class SuppressingCacheErrorHandler implements CacheErrorHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(SuppressingCacheErrorHandler.class);
 
     /** Operations we pre-register so the dashboard renders zeros, not "no data". */
     private static final List<String> OPERATIONS = List.of("get", "put", "evict", "clear");

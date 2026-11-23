@@ -1,5 +1,7 @@
 package nip.edu.jobprep.test.transfer;
 
+import nip.edu.jobprep.outbox.core.OutboxService;
+import nip.edu.jobprep.utils.cache.CacheEvictAfterCommit;
 import nip.edu.jobprep.dto.TransferRequestDto;
 import nip.edu.jobprep.dto.TransferResponseDto;
 import nip.edu.jobprep.entity.Account;
@@ -52,13 +54,13 @@ class TransferServiceImplTest {
     private TransferRepository transferRepository;
 
     @Mock
-    private nip.edu.jobprep.outbox.core.OutboxService outboxService;
+    private OutboxService outboxService;
 
     @Spy
     private TransferResponseMapper responseMapper = new TransferResponseMapper();
 
     @Mock
-    private nip.edu.jobprep.utils.cache.CacheEvictAfterCommit cacheEvict;
+    private CacheEvictAfterCommit cacheEvict;
 
     @Test
     void shouldTransferSuccessfully_whenAccountsAreActive() {

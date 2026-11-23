@@ -1,7 +1,6 @@
 package nip.edu.jobprep.utils.cache;
+import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
@@ -10,9 +9,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 
 @Component
+@Slf4j
 public class CacheEvictAfterCommit {
-
-    private static final Logger log = LoggerFactory.getLogger(CacheEvictAfterCommit.class);
 
     private final CacheManager cacheManager;
 

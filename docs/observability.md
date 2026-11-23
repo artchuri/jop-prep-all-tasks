@@ -55,3 +55,30 @@ curl -s localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job: .label
 ```
 
 Grafana: http://localhost:3000 (admin/admin).
+
+## Rate limiting (ACC-107)
+
+Метки: `client`, `endpoint` (категория лимита: get-account/freeze/transfer/default), `result` (`accepted` / `rejected` = 429 / `counted` = 404-405 без refund).
+
+| Метрика | Что показывает |
+|---|---|
+| `rate_limit_requests_total{client,endpoint,result}` | исход каждого запроса по клиенту и категории лимита |
+| `rate_limit_refunds_total{client,endpoint}` | 4xx/5xx вернули слот (кроме 404/405 — они `counted`) |
+| `rate_limit_window_usage_ratio{client,endpoint}` | заполненность окна 0..1 (обновляется только на reserve — при молчащем клиенте замораживается; алерт-база дополнена rejected-rate) |
+| `rate_limit_eval_seconds{op,outcome}` | латентность EVAL в Redis, гистограмма (p99 alert > 50ms) |
+| `rate_limit_outage_total{client}` | Redis недоступен → fail-closed 503 (Q7) |
+| `rate_limit_unauthorized_total` | 401 без ключа: не тратит лимит |
+| `rate_limit_in_flight_reservations` | запросы между reserve и refund |
+| `rate_limit_redis_errors_total{op}` | ошибки Redis по операции reserve/refund |
+
+НФТ тикета «среднее + максимальное кол-во запросов для пользака» считается в Prometheus из сырых счётчиков (Redis хранит только счётчик окна, Q8); обе панели есть в дашборде:
+
+```promql
+avg_over_time(sum by (client, endpoint) (increase(rate_limit_requests_total[60s]))[15m:60s])
+max_over_time(sum by (client, endpoint) (increase(rate_limit_requests_total[60s]))[15m:60s])
+```
+
+Алерты (`deploy/prometheus/alerts.yaml`, группа `rate-limit`): `RateLimiterOutage` (critical), `RateLimitEvalSlowP99`, `ClientNearRateLimit` (usage_ratio > 0.9 —⚠️ gauge замораживается при молчащем клиенте) и `ClientRejectedSpike` (стабильные 429 — активность-базированный комплемент).
+
+Дашборд: `deploy/grafana/rate-limit-dashboard.json` (9 панелей, включая avg/max).
+Ручная проверка: `deploy/rate-limit-load.sh [nominal|over]` — `over` шлёт `LIMIT_PER_MINUTE+50` параллельных GET против окна и обязан дать хвост 429 (насыщение именно GET'ами: 409 от freeze рефандится и окно не насыщает).

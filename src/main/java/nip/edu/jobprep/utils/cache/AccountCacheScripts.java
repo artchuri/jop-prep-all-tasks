@@ -1,5 +1,6 @@
 package nip.edu.jobprep.utils.cache;
 
+import java.util.concurrent.TimeUnit;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -94,7 +95,7 @@ public class AccountCacheScripts {
             throw e;
         } finally {
             (readFailed ? readError : readSuccess)
-                    .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
+                    .record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
         }
         ReadResult result = ReadResult.of(r, token);
         requestCounters.get(switch (result.status()) {
@@ -140,7 +141,7 @@ public class AccountCacheScripts {
             throw e;
         } finally {
             (invalidateFailed ? invalidateError : invalidateSuccess)
-                    .record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
+                    .record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
         }
     }
 

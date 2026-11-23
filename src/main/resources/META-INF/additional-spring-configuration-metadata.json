@@ -14,5 +14,71 @@
       "name": "spring.datasource.hikari.maximum-pool-size",
       "type": "java.lang.String",
       "description": "Description for spring.datasource.hikari.maximum-pool-size."
+    },
+    {
+      "name": "rate-limit.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Kill-switch ACC-107: false полностью обходит лимитер (откат, I7)."
+    },
+    {
+      "name": "rate-limit.outage-strategy",
+      "type": "nip.edu.jobprep.ratelimit.RateLimitProperties$OutageStrategy",
+      "description": "Стратегия при недоступности Redis: reject (fail-closed 503, по умолчанию) или allow (аварийный fail-open)."
+    },
+    {
+      "name": "rate-limit.path-prefix",
+      "type": "java.lang.String",
+      "description": "Бизнес-префикс под лимитером; /actuator/** всегда вне."
+    },
+    {
+      "name": "rate-limit.window-ms",
+      "type": "java.lang.Long",
+      "description": "Окно sliding window counter, мс (60000 = минута)."
+    },
+    {
+      "name": "rate-limit.default-limit-per-minute",
+      "type": "java.lang.Integer",
+      "description": "Бакет по умолчанию для незапротоколированных путей под path-prefix."
+    },
+    {
+      "name": "rate-limit.outage-retry-after-seconds",
+      "type": "java.lang.Integer",
+      "description": "Retry-After у 503 RATE_LIMITER_UNAVAILABLE."
+    },
+    {
+      "name": "rate-limit.pool-max-active",
+      "type": "java.lang.Integer",
+      "description": "Выделенный Jedis-пул лимитера: max active (не делит коннекты с кэшем, Q10)."
+    },
+    {
+      "name": "rate-limit.pool-max-idle",
+      "type": "java.lang.Integer",
+      "description": "Выделенный Jedis-пул лимитера: max idle."
+    },
+    {
+      "name": "rate-limit.pool-min-idle",
+      "type": "java.lang.Integer",
+      "description": "Выделенный Jedis-пул лимитера: min idle."
+    },
+    {
+      "name": "rate-limit.pool-command-timeout-ms",
+      "type": "java.lang.Integer",
+      "description": "Borrow max-wait и connect/read timeout операции EVAL, мс (детекция отказа, Q10)."
+    },
+    {
+      "name": "rate-limit.clients",
+      "type": "java.util.List<nip.edu.jobprep.ratelimit.RateLimitProperties$ClientSpec>",
+      "description": "Allowlist клиентов: name + api-key (ключ только из окружения). Дубликаты ключа/имени роняют старт."
+    },
+    {
+      "name": "rate-limit.endpoints",
+      "type": "java.util.List<nip.edu.jobprep.ratelimit.RateLimitProperties$EndpointLimit>",
+      "description": "Таблица бакетов: id, method, pattern (PathPattern, один сегмент в *), limit-per-minute. Порядок объявления = порядок матчинга."
+    },
+    {
+      "name": "rate-limit.peak-profiles",
+      "type": "java.util.List<nip.edu.jobprep.ratelimit.RateLimitProperties$PeakProfile>",
+      "description": "Cron-пики: cron, duration, multiplier <= 3; только предсказуемые пики (Q9), без hot-reload."
     }
-  ] }
+  ]
+}
